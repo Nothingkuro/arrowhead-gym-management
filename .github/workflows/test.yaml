@@ -1,0 +1,76 @@
+name: Backend Test CI
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/test.yaml"
+  pull_request:
+    branches: ["dev"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/test.yaml"
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test -- --runInBand --testPathPatterns=unit --passWithNoTests
+
+  api-tests:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+        run: npx prisma generate
+
+      - name: Run Prisma migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+        run: npm run db:migrate:prod
+
+      - name: Run API tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+          NODE_ENV: test
+        run: npm test -- --runInBand --testPathPatterns=api --passWithNoTests
