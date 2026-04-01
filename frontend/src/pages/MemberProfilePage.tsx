@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import ActionGroup from '../components/common/ActionGroup';
+import ProfileInfoRow from '../components/members/ProfileInfoRow';
+import StatusBadge from '../components/members/StatusBadge';
 import type { Member, MemberStatus } from '../types/member';
 
 /* ── Sample data (mirrors MembersPage until backend exists) ── */
@@ -80,30 +83,30 @@ function formatDate(iso: string): string {
   });
 }
 
-/** Status text colour */
-function statusColor(status: MemberStatus): string {
-  switch (status) {
-    case 'ACTIVE':
-      return 'text-success';
-    case 'EXPIRED':
-      return 'text-danger';
-    case 'INACTIVE':
-      return 'text-neutral-400';
-  }
+interface MemberProfilePageProps {
+  members?: Member[];
+  initialSideTab?: SideTab;
+  initialStatus?: MemberStatus;
+  disableNavigation?: boolean;
 }
 
-export default function MemberProfilePage() {
+export default function MemberProfilePage({
+  members = sampleMembers,
+  initialSideTab = 'payment',
+  initialStatus,
+  disableNavigation = false,
+}: MemberProfilePageProps) {
   const { memberId } = useParams<{ memberId: string }>();
   const navigate = useNavigate();
 
-  const [activeSideTab, setActiveSideTab] = useState<SideTab>('payment');
+  const [activeSideTab, setActiveSideTab] = useState<SideTab>(initialSideTab);
 
   /* ── Look up the member ── */
-  const member = sampleMembers.find((m) => m.id === memberId);
+  const member = members.find((m) => m.id === memberId);
 
   /* ── Local state so we can toggle status ── */
   const [memberStatus, setMemberStatus] = useState<MemberStatus>(
-    member?.status ?? 'INACTIVE',
+    initialStatus ?? member?.status ?? 'INACTIVE',
   );
 
   if (!member) {
@@ -111,7 +114,11 @@ export default function MemberProfilePage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-neutral-500 text-lg">Member not found.</p>
         <button
-          onClick={() => navigate('/dashboard/members')}
+          onClick={() => {
+            if (!disableNavigation) {
+              navigate('/dashboard/members');
+            }
+          }}
           className="
             flex items-center gap-2 text-primary hover:text-primary-dark
             text-sm font-medium transition-colors cursor-pointer
@@ -178,47 +185,18 @@ export default function MemberProfilePage() {
           >
             {/* Info rows */}
             <div className="space-y-4">
-              {/* Contact Number */}
-              <div className="flex items-center justify-between">
-                <span className="text-primary font-semibold text-sm sm:text-base">
-                  Contact Number
-                </span>
-                <span className="text-secondary text-sm sm:text-base font-medium">
-                  {member.contactNumber}
-                </span>
-              </div>
-
-              {/* Join Date */}
-              <div className="flex items-center justify-between">
-                <span className="text-primary font-semibold text-sm sm:text-base">
-                  Join Date
-                </span>
-                <span className="text-secondary text-sm sm:text-base font-medium">
-                  {formatDate(member.joinDate)}
-                </span>
-              </div>
-
-              {/* Expiry Date */}
-              <div className="flex items-center justify-between">
-                <span className="text-primary font-semibold text-sm sm:text-base">
-                  Expiry Date
-                </span>
-                <span className="text-secondary text-sm sm:text-base font-medium">
-                  {formatDate(member.expiryDate)}
-                </span>
-              </div>
-
-              {/* Status */}
-              <div className="flex items-center justify-between">
-                <span className="text-primary font-semibold text-sm sm:text-base">
-                  Status
-                </span>
-                <span
-                  className={`text-sm sm:text-base font-semibold uppercase ${statusColor(memberStatus)}`}
-                >
-                  {memberStatus.toUpperCase()}
-                </span>
-              </div>
+              <ProfileInfoRow label="Contact Number" value={member.contactNumber} />
+              <ProfileInfoRow label="Join Date" value={formatDate(member.joinDate)} />
+              <ProfileInfoRow label="Expiry Date" value={formatDate(member.expiryDate)} />
+              <ProfileInfoRow
+                label="Status"
+                value={
+                  <StatusBadge
+                    status={memberStatus}
+                    className="text-sm sm:text-base"
+                  />
+                }
+              />
             </div>
 
             {/* Notes */}
@@ -228,7 +206,7 @@ export default function MemberProfilePage() {
               </span>
               <div
                 className="
-                  mt-2 w-full min-h-[80px] px-4 py-3
+                  mt-2 w-full min-h-20 px-4 py-3
                   bg-white border border-neutral-300 rounded-md
                   text-sm text-secondary
                 "
@@ -238,58 +216,34 @@ export default function MemberProfilePage() {
             </div>
 
             {/* ── Action Buttons ── */}
-            <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
-              {/* Edit Profile */}
-              <button
-                onClick={handleEditProfile}
-                className="
-                  px-6 py-2 border-2 border-secondary rounded-lg
-                  text-sm font-semibold text-secondary bg-transparent
-                  hover:bg-secondary hover:text-text-light
-                  active:scale-[0.97] transition-all duration-200 cursor-pointer
-                "
-              >
-                Edit Profile
-              </button>
-
-              {/* Check-In */}
-              <button
-                onClick={handleCheckIn}
-                disabled={!canCheckIn}
-                className={`
-                  px-6 py-2 border-2 rounded-lg text-sm font-semibold
-                  active:scale-[0.97] transition-all duration-200
-                  ${canCheckIn
-                    ? 'border-neutral-400 text-neutral-600 bg-transparent hover:bg-neutral-100 cursor-pointer'
-                    : 'border-neutral-200 text-neutral-300 bg-neutral-50 cursor-not-allowed'
-                  }
-                `}
-              >
-                Check-In
-              </button>
-
-              {/* Deactivate */}
-              <button
-                onClick={handleDeactivate}
-                disabled={!canDeactivate}
-                className={`
-                  px-6 py-2 border-2 rounded-lg text-sm font-semibold
-                  active:scale-[0.97] transition-all duration-200
-                  ${canDeactivate
-                    ? 'border-danger text-danger bg-transparent hover:bg-danger hover:text-text-light cursor-pointer'
-                    : 'border-neutral-200 text-neutral-300 bg-neutral-50 cursor-not-allowed'
-                  }
-                `}
-              >
-                Deactivate
-              </button>
-            </div>
+            <ActionGroup
+              className="mt-8"
+              actions={[
+                {
+                  label: 'Edit Profile',
+                  onClick: handleEditProfile,
+                  variant: 'secondary',
+                },
+                {
+                  label: 'Check-In',
+                  onClick: handleCheckIn,
+                  disabled: !canCheckIn,
+                  variant: 'neutral',
+                },
+                {
+                  label: 'Deactivate',
+                  onClick: handleDeactivate,
+                  disabled: !canDeactivate,
+                  variant: 'danger',
+                },
+              ]}
+            />
           </div>
 
           {/* ════════════════════════════════════════════
               Right-side vertical tabs
              ════════════════════════════════════════════ */}
-          <div className="hidden md:flex flex-col gap-0 pt-0 -ml-[1px]">
+          <div className="hidden md:flex flex-col gap-0 pt-0 -ml-px">
             {/* Payment History tab */}
             <button
               onClick={() => setActiveSideTab('payment')}
@@ -329,7 +283,11 @@ export default function MemberProfilePage() {
         {/* ── Back Button (bottom-left, pill-shaped, matching wireframe) ── */}
         <div className="fixed bottom-6 left-6 sm:bottom-8 sm:left-72 z-20">
           <button
-            onClick={() => navigate('/dashboard/members')}
+            onClick={() => {
+              if (!disableNavigation) {
+                navigate('/dashboard/members');
+              }
+            }}
             className="
               flex items-center gap-1.5 px-5 py-2.5 bg-primary text-text-light
               rounded-full shadow-lg shadow-primary/30

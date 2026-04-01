@@ -1,11 +1,19 @@
-import { Search, Bell, Menu } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
+import { useState } from 'react';
+import SearchBar from '../common/SearchBar';
 
 interface HeaderProps {
   /** Callback to toggle sidebar on mobile */
   onMenuToggle: () => void;
+  showNotificationDot?: boolean;
 }
 
-export default function Header({ onMenuToggle }: HeaderProps) {
+export default function Header({
+  onMenuToggle,
+  showNotificationDot = true,
+}: HeaderProps) {
+  const [mobileSearch, setMobileSearch] = useState('');
+
   return (
     <header className="sticky top-0 z-30 bg-surface border-b border-neutral-200 px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between h-16">
@@ -38,7 +46,9 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           >
             <Bell size={20} />
             {/* Notification badge */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-surface" />
+            {showNotificationDot && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-surface" />
+            )}
           </button>
 
           {/* User Profile */}
@@ -55,23 +65,12 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
       {/* ── Mobile Search (shown below header on small screens) ── */}
       <div className="sm:hidden pb-3">
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-          />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="
-              w-full pl-9 pr-4 py-2 rounded-lg border border-neutral-200
-              bg-surface-alt text-sm text-secondary
-              placeholder:text-neutral-400
-              focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-              transition-all duration-200
-            "
-          />
-        </div>
+        <SearchBar
+          value={mobileSearch}
+          onChange={setMobileSearch}
+          placeholder="Search..."
+          inputClassName="border-neutral-200 bg-surface-alt text-secondary placeholder:text-neutral-400 py-2"
+        />
       </div>
     </header>
   );

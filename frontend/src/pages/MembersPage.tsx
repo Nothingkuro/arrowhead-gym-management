@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import AddMemberModal, { type MemberFormData } from '../components/AddMemberModal';
+import SearchBar from '../components/common/SearchBar';
+import FilterDropdown from '../components/common/FilterDropdown';
+import MemberTableRow from '../components/members/MemberTableRow';
 import type { Member, MemberStatus } from '../types/member';
 
-/** Status color mapping matching wireframe exactly */
-const statusStyles: Record<MemberStatus, { text: string; bg: string }> = {
-  ACTIVE: { text: 'text-success', bg: 'bg-success/5' },
-  EXPIRED: { text: 'text-danger', bg: 'bg-danger/5' },
-  INACTIVE: { text: 'text-neutral-400', bg: 'bg-neutral-50' },
-};
+type MembersFilter = 'ALL' | MemberStatus;
+
+const filterOptions: Array<{ label: string; value: MembersFilter }> = [
+  { label: 'All', value: 'ALL' },
+  { label: 'Active', value: 'ACTIVE' },
+  { label: 'Expired', value: 'EXPIRED' },
+  { label: 'Inactive', value: 'INACTIVE' },
+];
 
 /** Sample member data matching the wireframe */
 const sampleMembers: Member[] = [
@@ -75,13 +80,29 @@ const sampleMembers: Member[] = [
   },
 ];
 
-export default function MembersPage() {
+interface MembersPageProps {
+  members?: Member[];
+  initialSearchQuery?: string;
+  initialFilter?: MembersFilter;
+  initialFilterOpen?: boolean;
+  initialAddModalOpen?: boolean;
+  disableNavigation?: boolean;
+}
+
+export default function MembersPage({
+  members = sampleMembers,
+  initialSearchQuery = '',
+  initialFilter = 'ALL',
+  initialFilterOpen = false,
+  initialAddModalOpen = false,
+  disableNavigation = false,
+}: MembersPageProps) {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [filterOpen, setFilterOpen] = useState(initialFilterOpen);
+  const [activeFilter, setActiveFilter] = useState<MembersFilter>(initialFilter);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(initialAddModalOpen);
 
   const handleAddMember = (data: MemberFormData) => {
     // TODO: send to backend
@@ -89,16 +110,14 @@ export default function MembersPage() {
     setIsAddModalOpen(false);
   };
 
-  const filters = ['All', 'Active', 'Expired', 'Inactive'];
-
   /** Filter members based on search and status filter */
-  const filteredMembers = sampleMembers.filter((member) => {
+  const filteredMembers = members.filter((member) => {
     const fullName = `${member.firstName} ${member.lastName}`;
     const matchesSearch =
       fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
-      activeFilter === 'All' || member.status === activeFilter;
+      activeFilter === 'ALL' || member.status === activeFilter;
     return matchesSearch && matchesFilter;
   });
 
@@ -113,72 +132,25 @@ export default function MembersPage() {
 
       {/* ── Search & Filter Bar ── */}
       <div className="flex items-center gap-3 mb-6 max-w-2xl mx-auto">
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-          />
-          <input
-            type="text"
-            placeholder="Search member..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="
-              w-full pl-9 pr-4 py-2.5 bg-surface border border-neutral-300
-              rounded-lg text-sm text-secondary placeholder:text-neutral-400
-              focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-              transition-all duration-200
-            "
-          />
-        </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search member..."
+          className="flex-1"
+          inputClassName="bg-surface border-neutral-300 text-secondary placeholder:text-neutral-400"
+        />
 
-        {/* Filter Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setFilterOpen(!filterOpen)}
-            className="
-              flex items-center gap-2 px-4 py-2.5 bg-surface
-              border border-neutral-300 rounded-lg text-sm text-secondary
-              hover:border-neutral-400 transition-all duration-200 cursor-pointer
-            "
-          >
-            <span>Filter</span>
-            <ChevronDown
-              size={14}
-              className={`text-neutral-400 transition-transform duration-200 ${filterOpen ? 'rotate-180' : ''
-                }`}
-            />
-          </button>
-
-          {filterOpen && (
-            <div className="
-              absolute right-0 top-full mt-1 w-36 z-20
-              bg-surface border border-neutral-200 rounded-lg
-              shadow-lg overflow-hidden
-            ">
-              {filters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => {
-                    setActiveFilter(filter);
-                    setFilterOpen(false);
-                  }}
-                  className={`
-                    w-full px-4 py-2.5 text-left text-sm cursor-pointer
-                    transition-colors duration-150
-                    ${activeFilter === filter
-                      ? 'bg-primary text-text-light font-medium'
-                      : 'text-secondary hover:bg-surface-alt'
-                    }
-                  `}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <FilterDropdown
+          label="Filter"
+          options={filterOptions}
+          activeOption={activeFilter}
+          isOpen={filterOpen}
+          onToggle={() => setFilterOpen((prev) => !prev)}
+          onSelect={(option) => {
+            setActiveFilter(option as MembersFilter);
+            setFilterOpen(false);
+          }}
+        />
       </div>
 
       {/* ── Members Table ── */}
@@ -186,57 +158,22 @@ export default function MembersPage() {
         <div className="border border-neutral-300 rounded-lg overflow-hidden bg-surface">
           {filteredMembers.length > 0 ? (
             filteredMembers.map((member, index) => {
-              const style = statusStyles[member.status];
               const isHovered = hoveredRow === index;
 
               return (
-                <div
+                <MemberTableRow
                   key={member.id}
-                  onClick={() => navigate(`/dashboard/members/${member.id}`)}
+                  member={member}
+                  index={index}
+                  isHovered={isHovered}
+                  onClick={() => {
+                    if (!disableNavigation) {
+                      navigate(`/dashboard/members/${member.id}`);
+                    }
+                  }}
                   onMouseEnter={() => setHoveredRow(index)}
                   onMouseLeave={() => setHoveredRow(null)}
-                  className={`
-                    flex items-center px-4 sm:px-6 py-3 border-b border-neutral-200
-                    last:border-b-0 transition-all duration-200 cursor-pointer
-                    ${isHovered
-                      ? 'bg-warning'
-                      : index % 2 === 0
-                        ? 'bg-surface'
-                        : 'bg-surface-alt/50'
-                    }
-                  `}
-                >
-                  {/* ID */}
-                  <span className={`
-                    text-sm font-medium w-16 flex-shrink-0
-                    ${isHovered ? 'text-secondary' : 'text-primary'}
-                  `}>
-                    #{member.id}
-                  </span>
-
-                  {/* Hover indicator (shown in wireframe on hover)
-                  {isHovered && (
-                    <span className="text-xs text-secondary/60 hidden sm:inline">
-                      (on mouse hover)
-                    </span>
-                  )} */}
-
-                  {/* Name — pushed to the right half */}
-                  <span className={`
-                    flex-1 text-sm text-right sm:text-center
-                    ${isHovered ? 'text-secondary font-medium' : 'text-secondary'}
-                  `}>
-                    {member.firstName} {member.lastName}
-                  </span>
-
-                  {/* Status */}
-                  <span className={`
-                    text-sm font-medium w-24 text-right flex-shrink-0
-                    ${isHovered ? 'text-danger font-semibold' : style.text}
-                  `}>
-                    {member.status}
-                  </span>
-                </div>
+                />
               );
             })
           ) : (

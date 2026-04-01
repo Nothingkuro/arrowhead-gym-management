@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Users,
   CreditCard,
   Package,
-  UserCog,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -24,6 +22,8 @@ interface SidebarProps {
   isOpen: boolean;
   /** Callback to toggle sidebar open/closed on mobile */
   onToggle: () => void;
+  /** Initial collapsed state for desktop */
+  defaultCollapsed?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -32,8 +32,12 @@ const navItems: NavItem[] = [
   { label: 'Inventory', icon: <Package size={20} />, to: '/dashboard/inventory' },
 ];
 
-export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+export default function Sidebar({
+  isOpen,
+  onToggle,
+  defaultCollapsed = false,
+}: SidebarProps) {
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(defaultCollapsed);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -67,7 +71,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           <img
             src={arrowheadLogo}
             alt="Arrowhead Gym Logo"
-            className="w-10 h-10 object-contain flex-shrink-0"
+            className="w-10 h-10 object-contain shrink-0"
           />
           {!isCollapsed && (
             <div className="overflow-hidden">
@@ -102,7 +106,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             >
               {({ isActive }) => (
                 <>
-                  <span className={`flex-shrink-0 ${isActive ? 'text-text-light' : 'text-neutral-500 group-hover:text-text-light'}`}>
+                  <span className={`shrink-0 ${isActive ? 'text-text-light' : 'text-neutral-500 group-hover:text-text-light'}`}>
                     {item.icon}
                   </span>
                   {!isCollapsed && <span>{item.label}</span>}

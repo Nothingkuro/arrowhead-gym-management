@@ -4,10 +4,14 @@ import Header from './Header';
 
 interface MainLayoutProps {
   children: ReactNode;
+  initialSidebarOpen?: boolean;
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+export default function MainLayout({
+  children,
+  initialSidebarOpen = false,
+}: MainLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(initialSidebarOpen);
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 

@@ -6,6 +6,9 @@ interface AddMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: MemberFormData) => void;
+  initialData?: Partial<MemberFormData>;
+  isSubmitting?: boolean;
+  errorMessage?: string | null;
 }
 
 export interface MemberFormData {
@@ -19,6 +22,9 @@ export default function AddMemberModal({
   isOpen,
   onClose,
   onSubmit,
+  initialData,
+  isSubmitting = false,
+  errorMessage = null,
 }: AddMemberModalProps) {
   const [formData, setFormData] = useState<MemberFormData>({
     firstName: '',
@@ -37,8 +43,6 @@ export default function AddMemberModal({
       requestAnimationFrame(() => setIsAnimating(true));
       // Focus the first field after the entrance animation
       setTimeout(() => firstInputRef.current?.focus(), 250);
-    } else {
-      setIsAnimating(false);
     }
   }, [isOpen]);
 
@@ -54,9 +58,18 @@ export default function AddMemberModal({
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setFormData({ firstName: '', lastName: '', contactNumber: '', notes: '' });
+      const resetTimer = window.setTimeout(() => {
+        setFormData({
+          firstName: initialData?.firstName ?? '',
+          lastName: initialData?.lastName ?? '',
+          contactNumber: initialData?.contactNumber ?? '',
+          notes: initialData?.notes ?? '',
+        });
+      }, 0);
+
+      return () => window.clearTimeout(resetTimer);
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -68,6 +81,7 @@ export default function AddMemberModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     onSubmit(formData);
   };
 
@@ -134,6 +148,12 @@ export default function AddMemberModal({
 
         {/* ── Form ── */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {errorMessage && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {errorMessage}
+            </div>
+          )}
+
           <input
             ref={firstInputRef}
             type="text"
@@ -141,6 +161,7 @@ export default function AddMemberModal({
             placeholder="First Name"
             value={formData.firstName}
             onChange={handleChange}
+            disabled={isSubmitting}
             required
             className={inputClasses}
           />
@@ -151,6 +172,7 @@ export default function AddMemberModal({
             placeholder="Last Name"
             value={formData.lastName}
             onChange={handleChange}
+            disabled={isSubmitting}
             required
             className={inputClasses}
           />
@@ -161,6 +183,7 @@ export default function AddMemberModal({
             placeholder="Contact Number"
             value={formData.contactNumber}
             onChange={handleChange}
+            disabled={isSubmitting}
             required
             className={inputClasses}
           />
@@ -171,6 +194,7 @@ export default function AddMemberModal({
             placeholder="Notes"
             value={formData.notes}
             onChange={handleChange}
+            disabled={isSubmitting}
             className={inputClasses}
           />
 
@@ -178,14 +202,16 @@ export default function AddMemberModal({
           <div className="flex justify-center mt-4">
             <button
               type="submit"
+              disabled={isSubmitting}
               className="
                 px-10 py-2.5 bg-primary-dark text-text-light text-sm font-semibold
                 rounded-full shadow-md shadow-primary/20
                 hover:bg-primary hover:shadow-lg hover:shadow-primary/30
                 active:scale-[0.97] transition-all duration-200 cursor-pointer
+                disabled:cursor-not-allowed disabled:opacity-70
               "
             >
-              Submit
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </form>

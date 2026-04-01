@@ -6,14 +6,32 @@ type Role = 'Staff' | 'Owner';
 
 type LoginStep = 'select-role' | 'enter-credentials';
 
-export default function LoginPage() {
+interface LoginPageProps {
+  initialStep?: LoginStep;
+  initialRole?: Role | null;
+  initialUsername?: string;
+  initialPassword?: string;
+  initialError?: string | null;
+  initialLoading?: boolean;
+  disableSubmit?: boolean;
+}
+
+export default function LoginPage({
+  initialStep = 'select-role',
+  initialRole = null,
+  initialUsername = '',
+  initialPassword = '',
+  initialError = null,
+  initialLoading = false,
+  disableSubmit = false,
+}: LoginPageProps) {
   const navigate = useNavigate();
-  const [step, setStep] = useState<LoginStep>('select-role');
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<LoginStep>(initialStep);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(initialRole);
+  const [username, setUsername] = useState(initialUsername);
+  const [password, setPassword] = useState(initialPassword);
+  const [error, setError] = useState<string | null>(initialError);
+  const [isLoading, setIsLoading] = useState(initialLoading);
 
   const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
@@ -23,6 +41,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (disableSubmit) return;
     setError(null);
     setIsLoading(true);
 
@@ -46,8 +65,9 @@ export default function LoginPage() {
       }
 
       navigate('/dashboard/members');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to login';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -64,9 +84,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       {/* ── Background gradient matching wireframe ── */}
-      <div className="absolute inset-0 bg-gradient-to-b from-neutral-300 via-primary to-primary-dark" />
+      <div className="absolute inset-0 bg-linear-to-b from-neutral-300 via-primary to-primary-dark" />
       {/* Subtle overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20" />
+      <div className="absolute inset-0 bg-linear-to-br from-white/10 via-transparent to-black/20" />
 
       {/* ── Login Card ── */}
       <div className="relative z-10 w-full max-w-md mx-4">
