@@ -10,20 +10,47 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<LoginStep>('select-role');
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
-    setIsDropdownOpen(false);
     setStep('enter-credentials');
+    setError(null); // Reset error on role change
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual authentication
-    navigate('/dashboard/members');
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          role: selectedRole,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to login');
+      }
+
+      navigate('/dashboard/members');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -31,6 +58,7 @@ export default function LoginPage() {
     setSelectedRole(null);
     setUsername('');
     setPassword('');
+    setError(null);
   };
 
   return (
@@ -99,17 +127,24 @@ export default function LoginPage() {
                 Enter Username and Password:
               </p>
 
+              {error && (
+                <div className="p-3 mb-4 rounded-lg bg-red-50 text-red-600 text-sm border border-red-200 text-center">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-4">
                 <input
                   type="text"
                   placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoading}
                   className="
                     w-full px-4 py-3 bg-surface border border-neutral-300
                     rounded-lg text-sm text-secondary placeholder:text-neutral-400
                     focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-                    transition-all duration-200
+                    transition-all duration-200 disabled:opacity-50 disabled:bg-neutral-50
                   "
                   autoFocus
                 />
@@ -118,11 +153,12 @@ export default function LoginPage() {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                   className="
                     w-full px-4 py-3 bg-surface border border-neutral-300
                     rounded-lg text-sm text-secondary placeholder:text-neutral-400
                     focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-                    transition-all duration-200
+                    transition-all duration-200 disabled:opacity-50 disabled:bg-neutral-50
                   "
                 />
               </div>
@@ -131,26 +167,29 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleBack}
+                  disabled={isLoading}
                   className="
                     flex-1 px-4 py-3 border border-neutral-300 rounded-lg
                     text-sm font-medium text-secondary
                     hover:bg-neutral-100 active:scale-[0.98]
                     transition-all duration-150 cursor-pointer
+                    disabled:opacity-50 disabled:cursor-not-allowed
                   "
                 >
                   Back
                 </button>
                 <button
                   type="submit"
+                  disabled={isLoading}
                   className="
                     flex-1 px-4 py-3 bg-primary text-text-light rounded-lg
                     text-sm font-medium
                     hover:bg-primary-dark active:scale-[0.98]
                     transition-all duration-150 cursor-pointer
-                    shadow-md shadow-primary/25
+                    shadow-md shadow-primary/25 disabled:opacity-70 disabled:cursor-not-allowed
                   "
                 >
-                  Log In
+                  {isLoading ? 'Logging In...' : 'Log In'}
                 </button>
               </div>
 
