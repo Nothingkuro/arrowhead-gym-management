@@ -66,6 +66,15 @@ export default function LoginPage({
         throw new Error(data.error || 'Failed to login');
       }
 
+      const loggedInUsername =
+        typeof data?.user?.username === 'string' && data.user.username.trim()
+          ? data.user.username.trim()
+          : username.trim();
+
+      if (loggedInUsername) {
+        window.sessionStorage.setItem('authUsername', loggedInUsername);
+      }
+
       navigate('/dashboard/members');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to login';

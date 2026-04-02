@@ -17,6 +17,8 @@ export default function Header({
 }: HeaderProps) {
   const [mobileSearch, setMobileSearch] = useState('');
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const storedUsername = window.sessionStorage.getItem('authUsername')?.trim();
+  const displayName = storedUsername ? storedUsername : 'None';
 
   return (
     <header className="sticky top-0 z-30 bg-surface border-b border-neutral-200 px-4 sm:px-6 lg:px-8">
@@ -71,7 +73,7 @@ export default function Header({
             hover:bg-neutral-100 transition-colors duration-200
           ">
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-secondary leading-tight">Admin</p>
+              <p className="text-sm font-medium text-secondary leading-tight">{displayName}</p>
             </div>
           </div>
         </div>

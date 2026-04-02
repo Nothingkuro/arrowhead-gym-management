@@ -188,13 +188,13 @@ export default function AddMemberModal({
             className={inputClasses}
           />
 
-          <input
-            type="text"
+          <textarea
             name="notes"
             placeholder="Notes"
             value={formData.notes}
             onChange={handleChange}
             disabled={isSubmitting}
+            rows={3}
             className={inputClasses}
           />
 
