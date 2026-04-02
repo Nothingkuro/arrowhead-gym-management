@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import AddMemberModal, { type MemberFormData } from '../components/AddMemberModal';
+import MemberFormModal, { type MemberFormData } from '../components/AddMemberModal';
 import SearchBar from '../components/common/SearchBar';
 import FilterDropdown from '../components/common/FilterDropdown';
 import MemberTableRow from '../components/members/MemberTableRow';
+import { API_BASE_URL } from '../services/apiBaseUrl';
 import type { Member, MemberStatus } from '../types/member';
 
 type MembersFilter = 'ALL' | MemberStatus;
@@ -16,7 +17,6 @@ const filterOptions: Array<{ label: string; value: MembersFilter }> = [
   { label: 'Inactive', value: 'INACTIVE' },
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5001';
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 150;
 
@@ -367,7 +367,7 @@ export default function MembersPage({
       </div>
 
       {/* ── Add Member Modal ── */}
-      <AddMemberModal
+      <MemberFormModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSubmit={handleAddMember}

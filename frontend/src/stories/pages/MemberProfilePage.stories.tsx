@@ -76,3 +76,61 @@ export const ActiveMemberDeactivateFlow: Story = {
     });
   },
 };
+
+export const ActiveMemberEditProfileFlow: Story = {
+  render: () => <ProfileCanvas route="/dashboard/members/67" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ delay: 120 });
+
+    await user.click(canvas.getByRole('button', { name: 'Edit Profile' }));
+
+    const firstNameInput = await canvas.findByPlaceholderText('First Name');
+    const lastNameInput = canvas.getByPlaceholderText('Last Name');
+    const contactNumberInput = canvas.getByPlaceholderText('Contact Number');
+    const notesInput = canvas.getByPlaceholderText('Notes');
+
+    await user.clear(firstNameInput);
+    await user.type(firstNameInput, 'Ariana');
+
+    await user.clear(lastNameInput);
+    await user.type(lastNameInput, 'Santos');
+
+    await user.clear(contactNumberInput);
+    await user.type(contactNumberInput, '09171234567');
+
+    await user.clear(notesInput);
+    await user.type(notesInput, 'Prefers evening sessions and text updates.');
+
+    await user.click(canvas.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() => {
+      expect(canvas.queryByPlaceholderText('First Name')).not.toBeInTheDocument();
+      expect(canvas.getByRole('heading', { name: 'Ariana Santos' })).toBeInTheDocument();
+      expect(canvas.getByText('09171234567')).toBeInTheDocument();
+      expect(canvas.getByText('Prefers evening sessions and text updates.')).toBeInTheDocument();
+    });
+  },
+};
+
+export const ActiveMemberEditProfileDuplicateContactFlow: Story = {
+  render: () => <ProfileCanvas route="/dashboard/members/67" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ delay: 120 });
+
+    await user.click(canvas.getByRole('button', { name: 'Edit Profile' }));
+
+    const contactNumberInput = await canvas.findByPlaceholderText('Contact Number');
+    await user.clear(contactNumberInput);
+    await user.type(contactNumberInput, '123445456465');
+
+    await user.click(canvas.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() => {
+      expect(canvas.getByText('Contact number already exists.')).toBeInTheDocument();
+      expect(canvas.getByPlaceholderText('First Name')).toBeInTheDocument();
+      expect(canvas.getByPlaceholderText('Contact Number')).toHaveValue('123445456465');
+    });
+  },
+};

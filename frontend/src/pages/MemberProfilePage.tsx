@@ -1,84 +1,68 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import MemberFormModal, { type MemberFormData } from '../components/AddMemberModal';
 import ActionGroup from '../components/common/ActionGroup';
 import ProfileInfoRow from '../components/members/ProfileInfoRow';
 import StatusBadge from '../components/members/StatusBadge';
+import { API_BASE_URL } from '../services/apiBaseUrl';
 import type { Member, MemberStatus } from '../types/member';
 
-/* ── Sample data (mirrors MembersPage until backend exists) ── */
-const sampleMembers: Member[] = [
-  {
-    id: '67',
-    firstName: 'John Elmo',
-    lastName: 'Doe',
-    contactNumber: '123445456464',
-    joinDate: '2023-01-01',
-    expiryDate: '2023-03-03',
-    status: 'ACTIVE',
-    notes: '',
-  },
-  {
-    id: '68',
-    firstName: 'John Elmo',
-    lastName: 'Doe',
-    contactNumber: '123445456465',
-    joinDate: '2023-01-01',
-    expiryDate: '2023-03-03',
-    status: 'ACTIVE',
-    notes: '',
-  },
-  {
-    id: '69',
-    firstName: 'John Elmo',
-    lastName: 'Doe',
-    contactNumber: '123445456466',
-    joinDate: '2023-02-15',
-    expiryDate: '2023-04-15',
-    status: 'EXPIRED',
-    notes: 'Needs follow-up',
-  },
-  {
-    id: '70',
-    firstName: 'John Elmo',
-    lastName: 'Doe',
-    contactNumber: '123445456467',
-    joinDate: '2023-02-15',
-    expiryDate: '2023-04-15',
-    status: 'EXPIRED',
-    notes: '',
-  },
-  {
-    id: '71',
-    firstName: 'John Elmo',
-    lastName: 'Doe',
-    contactNumber: '123445456468',
-    joinDate: '2023-03-10',
-    expiryDate: '2023-06-10',
-    status: 'INACTIVE',
-    notes: 'Moved to another city',
-  },
-  {
-    id: '72',
-    firstName: 'John Elmo',
-    lastName: 'Doe',
-    contactNumber: '123445456469',
-    joinDate: '2023-03-10',
-    expiryDate: '2023-06-10',
-    status: 'INACTIVE',
-    notes: '',
-  },
-  {
-    id: 'skdfkjsbdfkjbdfksbdfkjbsdkjfbskjdbfkjsbdkjsbdfksbfksdbfkbsjdfkjbdf',
-    firstName: 'slkdkfnfklsndflnsdklfnskldfnklsdnfklsndklfnskldnklsdnflksndfnsdnlsndfnln',
-    lastName: 'sdnfnrensnglndslgjosjfgsjgo',
-    contactNumber: '94035809485093',
-    joinDate: '2023-03-10',
-    expiryDate: '2023-06-10',
-    status: 'INACTIVE',
-    notes: 'test member with very long id and name to check text overflow handling in the UI',
+type ApiMember = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+  joinDate: string;
+  expiryDate: string;
+  status: MemberStatus;
+  notes?: string;
+};
+
+type ApiMembersResponse = {
+  items: ApiMember[];
+};
+
+function normalizeMember(apiMember: ApiMember): Member {
+  return {
+    id: apiMember.id,
+    firstName: apiMember.firstName,
+    lastName: apiMember.lastName,
+    contactNumber: apiMember.contactNumber,
+    joinDate: apiMember.joinDate,
+    expiryDate: apiMember.expiryDate || '',
+    status: apiMember.status,
+    notes: apiMember.notes ?? '',
+  };
+}
+
+async function parseApiResponse(response: Response): Promise<unknown> {
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    return response.json();
   }
-];
+
+  const textBody = await response.text();
+
+  if (textBody.includes('Cannot PATCH /api/members/')) {
+    throw new Error('Member update endpoint is unavailable on the running backend. Restart the backend server to load the latest routes.');
+  }
+
+  throw new Error(
+    textBody.trim().startsWith('<')
+      ? 'Server returned HTML instead of JSON. Check VITE_API_BASE_URL and backend API route configuration.'
+      : 'Server returned an unexpected response format.',
+  );
+}
+
+function normalizeNameInput(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+function normalizeContactInput(value: string): string {
+  return value.replace(/\D/g, '');
+}
 
 /** Side tab options */
 type SideTab = 'payment' | 'attendance';
@@ -101,7 +85,7 @@ interface MemberProfilePageProps {
 }
 
 export default function MemberProfilePage({
-  members = sampleMembers,
+  members,
   initialSideTab = 'payment',
   initialStatus,
   disableNavigation = false,
@@ -111,13 +95,123 @@ export default function MemberProfilePage({
 
   const [activeSideTab, setActiveSideTab] = useState<SideTab>(initialSideTab);
 
-  /* ── Look up the member ── */
-  const member = members.find((m) => m.id === memberId);
+  const [fetchedMember, setFetchedMember] = useState<Member | null>(null);
+  const [isLoadingMember, setIsLoadingMember] = useState(!members);
+  const [memberLoadError, setMemberLoadError] = useState<string | null>(null);
+  const [editableMember, setEditableMember] = useState<Member | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (members) {
+      setFetchedMember(null);
+      setIsLoadingMember(false);
+      setMemberLoadError(null);
+      return;
+    }
+
+    if (!memberId) {
+      setFetchedMember(null);
+      setIsLoadingMember(false);
+      setMemberLoadError('Member not found.');
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadMember = async () => {
+      try {
+        setIsLoadingMember(true);
+        setMemberLoadError(null);
+
+        const params = new URLSearchParams({
+          search: memberId,
+          page: '1',
+          pageSize: '100',
+        });
+
+        const response = await fetch(`${API_BASE_URL}/api/members?${params.toString()}`, {
+          method: 'GET',
+          credentials: 'include',
+          signal: controller.signal,
+        });
+
+        const data = (await parseApiResponse(response)) as ApiMembersResponse | { error?: string };
+
+        if (!response.ok) {
+          const message = 'error' in data && typeof data.error === 'string'
+            ? data.error
+            : 'Failed to load member profile';
+          throw new Error(message);
+        }
+
+        const matchingMember = (data as ApiMembersResponse).items.find((item) => item.id === memberId);
+        setFetchedMember(matchingMember ? normalizeMember(matchingMember) : null);
+      } catch (error: unknown) {
+        if ((error as { name?: string })?.name === 'AbortError') {
+          return;
+        }
+        const message = error instanceof Error ? error.message : 'Failed to load member profile';
+        setMemberLoadError(message);
+      } finally {
+        setIsLoadingMember(false);
+      }
+    };
+
+    void loadMember();
+
+    return () => {
+      controller.abort();
+    };
+  }, [members, memberId]);
+
+  const sourceMember = members?.find((m) => m.id === memberId) ?? fetchedMember;
+
+  useEffect(() => {
+    setEditableMember(sourceMember ? { ...sourceMember } : null);
+  }, [sourceMember]);
+
+  const member = editableMember ?? sourceMember;
 
   /* ── Local state so we can toggle status ── */
   const [memberStatus, setMemberStatus] = useState<MemberStatus>(
-    initialStatus ?? member?.status ?? 'INACTIVE',
+    initialStatus ?? 'INACTIVE',
   );
+
+  useEffect(() => {
+    setMemberStatus(initialStatus ?? member?.status ?? 'INACTIVE');
+  }, [initialStatus, member?.status]);
+
+  if (isLoadingMember) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <p className="text-neutral-500 text-lg">Loading member profile...</p>
+      </div>
+    );
+  }
+
+  if (memberLoadError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <p className="text-red-600 text-lg">{memberLoadError}</p>
+        <button
+          onClick={() => {
+            if (!disableNavigation) {
+              navigate('/dashboard/members');
+            }
+          }}
+          className="
+            flex items-center gap-2 text-primary hover:text-primary-dark
+            text-sm font-medium transition-colors cursor-pointer
+          "
+        >
+          <ArrowLeft size={16} />
+          Back to Members
+        </button>
+      </div>
+    );
+  }
 
   if (!member) {
     return (
@@ -156,8 +250,96 @@ export default function MemberProfilePage({
   };
 
   const handleEditProfile = () => {
-    // TODO: open edit modal or navigate to edit
-    console.log('Edit profile:', member.id);
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleProfileSave = async (data: MemberFormData) => {
+    if (!member) return;
+
+    const normalizedFirstName = normalizeNameInput(data.firstName);
+    const normalizedLastName = normalizeNameInput(data.lastName);
+    const normalizedContactNumber = normalizeContactInput(data.contactNumber);
+    const normalizedNotes = data.notes.trim();
+    const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
+
+    if (!fullName || !normalizedContactNumber) {
+      setEditError('Full name and contact number are required.');
+      return;
+    }
+
+    if (normalizedContactNumber.length < 7 || normalizedContactNumber.length > 15) {
+      setEditError('Contact number must contain 7 to 15 digits.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      setEditError(null);
+
+      if (members) {
+        const duplicateContact = members.some(
+          (existingMember) =>
+            existingMember.id !== member.id
+            && normalizeContactInput(existingMember.contactNumber) === normalizedContactNumber,
+        );
+
+        if (duplicateContact) {
+          setEditError('Contact number already exists.');
+          return;
+        }
+
+        setEditableMember((currentMember) => {
+          if (!currentMember) {
+            return currentMember;
+          }
+
+          return {
+            ...currentMember,
+            firstName: normalizedFirstName,
+            lastName: normalizedLastName,
+            contactNumber: normalizedContactNumber,
+            notes: normalizedNotes,
+          };
+        });
+
+        setIsEditModalOpen(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/members/${member.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: normalizedFirstName,
+          lastName: normalizedLastName,
+          contactNumber: normalizedContactNumber,
+        }),
+      });
+
+      const responseBody = (await parseApiResponse(response)) as ApiMember | { error?: string };
+
+      if (!response.ok) {
+        const message = 'error' in responseBody && typeof responseBody.error === 'string'
+          ? responseBody.error
+          : 'Failed to update member profile';
+        throw new Error(message);
+      }
+
+      const updatedMember = normalizeMember(responseBody as ApiMember);
+      updatedMember.notes = normalizedNotes;
+      setEditableMember(updatedMember);
+      setIsEditModalOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to update member profile';
+      setEditError(message);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   /* ── Derived flags ── */
@@ -310,6 +492,28 @@ export default function MemberProfilePage({
           </button>
         </div>
       </div>
+
+      <MemberFormModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          if (!isSavingProfile) {
+            setEditError(null);
+            setIsEditModalOpen(false);
+          }
+        }}
+        onSubmit={handleProfileSave}
+        initialData={{
+          firstName: member.firstName,
+          lastName: member.lastName,
+          contactNumber: member.contactNumber,
+          notes: member.notes,
+        }}
+        isSubmitting={isSavingProfile}
+        errorMessage={editError}
+        title="Edit Profile"
+        submitLabel="Save Changes"
+        submittingLabel="Saving..."
+      />
     </div>
   );
 }

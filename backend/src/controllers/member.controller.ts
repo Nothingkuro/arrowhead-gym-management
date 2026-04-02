@@ -17,6 +17,10 @@ function normalizeFullName(value: string): string {
   return value.trim().replace(/\s+/g, ' ');
 }
 
+function normalizeNamePart(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
 function normalizeContactNumber(value: string): string {
   return value.replace(/\D/g, '');
 }
@@ -168,5 +172,82 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
 
     console.error('Error creating member:', error);
     res.status(500).json({ error: 'Failed to create member' });
+  }
+};
+
+export const updateMember = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const memberIdParam = req.params.memberId;
+    const memberId = Array.isArray(memberIdParam) ? memberIdParam[0] : memberIdParam;
+    const rawFirstName = req.body?.firstName;
+    const rawLastName = req.body?.lastName;
+    const rawContactNumber = req.body?.contactNumber;
+
+    if (!memberId) {
+      res.status(400).json({ error: 'Member id is required' });
+      return;
+    }
+
+    if (
+      typeof rawFirstName !== 'string'
+      || typeof rawLastName !== 'string'
+      || typeof rawContactNumber !== 'string'
+    ) {
+      res.status(400).json({ error: 'First name, last name, and contact number are required' });
+      return;
+    }
+
+    const firstName = normalizeNamePart(rawFirstName);
+    const lastName = normalizeNamePart(rawLastName);
+    const contactNumber = normalizeContactNumber(rawContactNumber);
+    const fullName = normalizeFullName(`${firstName} ${lastName}`);
+
+    if (!fullName || !contactNumber) {
+      res.status(400).json({ error: 'Full name and contact number are required' });
+      return;
+    }
+
+    if (contactNumber.length < 7 || contactNumber.length > 15) {
+      res.status(400).json({ error: 'Contact number must contain 7 to 15 digits' });
+      return;
+    }
+
+    const existingMember = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: { id: true },
+    });
+
+    if (!existingMember) {
+      res.status(404).json({ error: 'Member not found' });
+      return;
+    }
+
+    const updatedMember = await prisma.member.update({
+      where: { id: memberId },
+      data: {
+        firstName,
+        lastName,
+        contactNumber,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        contactNumber: true,
+        joinDate: true,
+        expiryDate: true,
+        status: true,
+      },
+    });
+
+    res.status(200).json(toMemberListItem(updatedMember));
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      res.status(409).json({ error: 'Contact number already exists' });
+      return;
+    }
+
+    console.error('Error updating member:', error);
+    res.status(500).json({ error: 'Failed to update member' });
   }
 };

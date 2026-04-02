@@ -2,13 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import arrowheadLogo from '../assets/arrowhead-logo.png';
 
-interface AddMemberModalProps {
+interface MemberFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: MemberFormData) => void;
   initialData?: Partial<MemberFormData>;
   isSubmitting?: boolean;
   errorMessage?: string | null;
+  title?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
 }
 
 export interface MemberFormData {
@@ -18,14 +21,17 @@ export interface MemberFormData {
   notes: string;
 }
 
-export default function AddMemberModal({
+export default function MemberFormModal({
   isOpen,
   onClose,
   onSubmit,
   initialData,
   isSubmitting = false,
   errorMessage = null,
-}: AddMemberModalProps) {
+  title = 'Add Member',
+  submitLabel = 'Submit',
+  submittingLabel = 'Submitting...',
+}: MemberFormModalProps) {
   const [formData, setFormData] = useState<MemberFormData>({
     firstName: '',
     lastName: '',
@@ -142,7 +148,7 @@ export default function AddMemberModal({
             className="h-9 w-auto object-contain"
           />
           <h2 className="text-primary text-2xl sm:text-3xl font-semibold tracking-tight">
-            Add Member
+            {title}
           </h2>
         </div>
 
@@ -211,7 +217,7 @@ export default function AddMemberModal({
                 disabled:cursor-not-allowed disabled:opacity-70
               "
             >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
+              {isSubmitting ? submittingLabel : submitLabel}
             </button>
           </div>
         </form>

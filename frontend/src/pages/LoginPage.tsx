@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import arrowheadLogo from '../assets/arrowhead-logo.png';
+import { API_BASE_URL } from '../services/apiBaseUrl';
 
 type Role = 'Staff' | 'Owner';
 
@@ -25,7 +26,6 @@ export default function LoginPage({
   initialLoading = false,
   disableSubmit = false,
 }: LoginPageProps) {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5001'
   const navigate = useNavigate();
   const [step, setStep] = useState<LoginStep>(initialStep);
   const [selectedRole, setSelectedRole] = useState<Role | null>(initialRole);
