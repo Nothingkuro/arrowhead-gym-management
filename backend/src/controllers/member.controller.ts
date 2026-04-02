@@ -251,3 +251,47 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ error: 'Failed to update member' });
   }
 };
+
+export const deactivateMember = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const memberIdParam = req.params.memberId;
+    const memberId = Array.isArray(memberIdParam) ? memberIdParam[0] : memberIdParam;
+
+    if (!memberId) {
+      res.status(400).json({ error: 'Member id is required' });
+      return;
+    }
+
+    const existingMember = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: { id: true },
+    });
+
+    if (!existingMember) {
+      res.status(404).json({ error: 'Member not found' });
+      return;
+    }
+
+    const updatedMember = await prisma.member.update({
+      where: { id: memberId },
+      data: {
+        status: MemberStatus.INACTIVE,
+        expiryDate: null,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        contactNumber: true,
+        joinDate: true,
+        expiryDate: true,
+        status: true,
+      },
+    });
+
+    res.status(200).json(toMemberListItem(updatedMember));
+  } catch (error) {
+    console.error('Error deactivating member:', error);
+    res.status(500).json({ error: 'Failed to deactivate member' });
+  }
+};

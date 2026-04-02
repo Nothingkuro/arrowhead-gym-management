@@ -69,7 +69,16 @@ type SideTab = 'payment' | 'attendance';
 
 /** Format ISO date to readable format */
 function formatDate(iso: string): string {
+  if (!iso) {
+    return '--';
+  }
+
   const d = new Date(iso);
+
+  if (Number.isNaN(d.getTime())) {
+    return '--';
+  }
+
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -102,6 +111,8 @@ export default function MemberProfilePage({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (members) {
@@ -243,10 +254,56 @@ export default function MemberProfilePage({
     console.log('Checked in:', member.id);
   };
 
-  const handleDeactivate = () => {
-    setMemberStatus('INACTIVE');
-    // TODO: call backend deactivate endpoint
-    console.log('Deactivated:', member.id);
+  const handleDeactivate = async () => {
+    if (!member || isDeactivating || memberStatus === 'INACTIVE') {
+      return;
+    }
+
+    setDeactivateError(null);
+
+    if (members) {
+      setMemberStatus('INACTIVE');
+      setEditableMember((currentMember) => {
+        if (!currentMember) {
+          return currentMember;
+        }
+
+        return {
+          ...currentMember,
+          status: 'INACTIVE',
+          expiryDate: '',
+        };
+      });
+      return;
+    }
+
+    try {
+      setIsDeactivating(true);
+
+      const response = await fetch(`${API_BASE_URL}/api/members/${member.id}/deactivate`, {
+        method: 'PATCH',
+        credentials: 'include',
+      });
+
+      const responseBody = (await parseApiResponse(response)) as ApiMember | { error?: string };
+
+      if (!response.ok) {
+        const message = 'error' in responseBody && typeof responseBody.error === 'string'
+          ? responseBody.error
+          : 'Failed to deactivate member';
+        throw new Error(message);
+      }
+
+      const updatedMember = normalizeMember(responseBody as ApiMember);
+      updatedMember.notes = member.notes;
+      setEditableMember(updatedMember);
+      setMemberStatus(updatedMember.status);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to deactivate member';
+      setDeactivateError(message);
+    } finally {
+      setIsDeactivating(false);
+    }
   };
 
   const handleEditProfile = () => {
@@ -344,7 +401,7 @@ export default function MemberProfilePage({
 
   /* ── Derived flags ── */
   const canCheckIn = memberStatus === 'ACTIVE';
-  const canDeactivate = memberStatus !== 'INACTIVE';
+  const canDeactivate = memberStatus !== 'INACTIVE' && !isDeactivating;
 
   return (
     <div className="relative min-h-full flex">
@@ -423,13 +480,17 @@ export default function MemberProfilePage({
                   variant: 'neutral',
                 },
                 {
-                  label: 'Deactivate',
+                  label: isDeactivating ? 'Deactivating...' : 'Deactivate',
                   onClick: handleDeactivate,
                   disabled: !canDeactivate,
                   variant: 'danger',
                 },
               ]}
             />
+
+            {deactivateError && (
+              <p className="mt-3 text-center text-sm text-red-600">{deactivateError}</p>
+            )}
           </div>
 
           {/* ════════════════════════════════════════════
