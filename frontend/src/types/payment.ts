@@ -15,4 +15,5 @@ export interface MembershipPlan {
   name: string;
   durationDays: number;
   price: number;
+  description?: string;
 }

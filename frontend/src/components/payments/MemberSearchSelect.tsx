@@ -29,11 +29,6 @@ export default function MemberSearchSelect({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedMember = useMemo(
-    () => members.find((member) => member.id === selectedMemberId),
-    [members, selectedMemberId],
-  );
-
   const filteredMembers = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -47,10 +42,6 @@ export default function MemberSearchSelect({
       return fullName.includes(normalizedQuery) || member.contactNumber.includes(normalizedQuery);
     });
   }, [members, searchQuery]);
-
-  const searchInputValue = showSuggestions
-    ? searchQuery
-    : formatMemberName(selectedMember);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -67,7 +58,7 @@ export default function MemberSearchSelect({
     <div ref={containerRef}>
       <label className="mb-1.5 block text-sm font-semibold text-primary">Select Member</label>
       <SearchBar
-        value={searchInputValue}
+        value={searchQuery}
         onChange={(value) => {
           setSearchQuery(value);
           setShowSuggestions(value.trim().length > 0);
@@ -97,7 +88,7 @@ export default function MemberSearchSelect({
                   className={`
                     flex w-full items-center justify-between border-b border-neutral-200 px-4 py-2.5 text-left text-sm
                     last:border-b-0 transition-colors duration-150 cursor-pointer
-                    ${isSelected ? 'bg-warning/40 text-secondary font-semibold' : 'hover:bg-surface-alt/70 text-secondary'}
+                    ${isSelected ? 'bg-warning text-secondary font-semibold' : 'hover:bg-surface-alt/70 text-secondary'}
                   `}
                 >
                   <span>{formatMemberName(member)}</span>

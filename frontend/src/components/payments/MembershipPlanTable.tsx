@@ -34,12 +34,15 @@ export default function MembershipPlanTable({
               <th className="border-b border-neutral-300 px-4 py-2 text-left font-semibold">
                 Membership Price
               </th>
+              <th className="border-b border-neutral-300 px-4 py-2 text-left font-semibold">
+                Membership Description
+              </th>
             </tr>
           </thead>
           <tbody>
             {plans.length === 0 ? (
               <tr>
-                <td colSpan={2} className="px-4 py-6 text-center text-neutral-400">
+                <td colSpan={3} className="px-4 py-6 text-center text-neutral-400">
                   {isLoading ? 'Loading plans...' : 'No active plans available'}
                 </td>
               </tr>
@@ -49,12 +52,13 @@ export default function MembershipPlanTable({
                   key={plan.id}
                   onClick={() => onSelectPlan(plan.id)}
                   className={`cursor-pointer border-b border-neutral-200 last:border-b-0 ${
-                    selectedPlanId === plan.id ? 'bg-warning/40' : 'hover:bg-surface-alt/70'
+                    selectedPlanId === plan.id ? 'bg-warning' : 'hover:bg-surface-alt/70'
                   }`}
                   aria-selected={selectedPlanId === plan.id}
                 >
                   <td className="px-4 py-2 text-secondary">{plan.name}</td>
                   <td className="px-4 py-2 text-secondary">{formatPhp(plan.price)}</td>
+                  <td className="px-4 py-2 text-secondary">{plan.description?.trim() || 'No description provided'}</td>
                 </tr>
               ))
             )}
