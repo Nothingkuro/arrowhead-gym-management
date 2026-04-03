@@ -2,12 +2,12 @@ name: Backend Test CI
 
 on:
   push:
-    branches: ["dev"]
+    branches: ["dev", "feat/*", "test"]
     paths:
       - "backend/**"
       - ".github/workflows/test.yaml"
   pull_request:
-    branches: ["dev"]
+    branches: ["dev", "test", "main"]
     paths:
       - "backend/**"
       - ".github/workflows/test.yaml"
@@ -36,7 +36,7 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: npm test -- --runInBand --testPathPatterns=unit --passWithNoTests
+        run: npm run test:unit
 
   api-tests:
     runs-on: ubuntu-latest
@@ -73,4 +73,4 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
           NODE_ENV: test
-        run: npm test -- --runInBand --testPathPatterns=api --passWithNoTests
+        run: npm run test:integration

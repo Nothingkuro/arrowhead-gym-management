@@ -1,9 +1,8 @@
-import 'dotenv/config';
 import request from 'supertest';
 import { Role } from '@prisma/client';
-import app from '../src/app';
-import prisma from '../src/lib/prisma';
-import { hashPassword } from '../src/utils/auth';
+import app from '../../src/app';
+import prisma, { disconnectPrisma } from '../../src/lib/prisma';
+import { hashPassword } from '../../src/utils/auth';
 
 describe('Membership management API (no mocks)', () => {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -72,7 +71,7 @@ describe('Membership management API (no mocks)', () => {
       },
     });
 
-    await prisma.$disconnect();
+    await disconnectPrisma();
   });
 
   it('rejects unauthenticated access to GET /api/members', async () => {
@@ -80,6 +79,27 @@ describe('Membership management API (no mocks)', () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: 'Authentication required' });
+  });
+
+  it('rejects access with invalid session token', async () => {
+    const response = await request(app)
+      .get('/api/members')
+      .set('Cookie', 'arrowhead_session=invalid-token');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Invalid or expired session' });
+  });
+
+  it('rejects member creation when required fields are missing', async () => {
+    const response = await request(app)
+      .post('/api/members')
+      .set('Cookie', authCookie)
+      .send({
+        fullName: 'Only Name',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Full name and contact number are required' });
   });
 
   it('creates a member with authenticated request', async () => {
@@ -101,6 +121,19 @@ describe('Membership management API (no mocks)', () => {
 
     createdMemberId = response.body.id;
     expect(typeof createdMemberId).toBe('string');
+  });
+
+  it('rejects duplicate contact number when creating a member', async () => {
+    const response = await request(app)
+      .post('/api/members')
+      .set('Cookie', authCookie)
+      .send({
+        fullName: 'Another Member',
+        contactNumber: originalContactNumber,
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: 'Contact number already exists' });
   });
 
   it('returns created member in paginated list', async () => {
@@ -136,6 +169,52 @@ describe('Membership management API (no mocks)', () => {
     expect(response.body.contactNumber).toBe(updatedContactNumber);
   });
 
+  it('rejects update when required fields are missing', async () => {
+    expect(createdMemberId).toBeTruthy();
+
+    const response = await request(app)
+      .patch(`/api/members/${createdMemberId}`)
+      .set('Cookie', authCookie)
+      .send({
+        firstName: 'OnlyFirstName',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'First name, last name, and contact number are required',
+    });
+  });
+
+  it('rejects update when contact number format is invalid', async () => {
+    expect(createdMemberId).toBeTruthy();
+
+    const response = await request(app)
+      .patch(`/api/members/${createdMemberId}`)
+      .set('Cookie', authCookie)
+      .send({
+        firstName: 'Updated',
+        lastName: 'Member',
+        contactNumber: '123-45',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Contact number must contain 7 to 15 digits' });
+  });
+
+  it('returns 404 when updating a non-existent member', async () => {
+    const response = await request(app)
+      .patch('/api/members/non-existent-member-id')
+      .set('Cookie', authCookie)
+      .send({
+        firstName: 'Ghost',
+        lastName: 'Member',
+        contactNumber: '09175554444',
+      });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Member not found' });
+  });
+
   it('deactivates an existing member', async () => {
     expect(createdMemberId).toBeTruthy();
 
@@ -148,5 +227,15 @@ describe('Membership management API (no mocks)', () => {
     expect(response.body.id).toBe(createdMemberId);
     expect(response.body.status).toBe('INACTIVE');
     expect(response.body.expiryDate).toBe('');
+  });
+
+  it('returns 404 when deactivating a non-existent member', async () => {
+    const response = await request(app)
+      .patch('/api/members/non-existent-member-id/deactivate')
+      .set('Cookie', authCookie)
+      .send();
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Member not found' });
   });
 });
