@@ -77,3 +77,24 @@ export const FilterByMonthAndYear: Story = {
     expect(canvas.getByText('Payment #50011')).toBeInTheDocument();
   },
 };
+
+export const LongPaymentId: Story = {
+  args: {
+    memberId: '67',
+    payments: [
+      {
+        id: 'PAYMENT-2026-VERY-LONG-ID-1234567890',
+        memberId: '67',
+        paidAt: '2026-04-01T08:00:00.000Z',
+        amountPhp: 600,
+        membershipPlan: 'One Month',
+        processedBy: 'Staff D',
+      },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    expect(canvas.getByText('Payment #PAYMENT-20...')).toBeInTheDocument();
+  },
+};
