@@ -2,7 +2,7 @@ name: Backend Test CI
 
 on:
   push:
-    branches: ["dev", "feat/*", "test"]
+    branches: ["dev", "feat/**", "test"]
     paths:
       - "backend/**"
       - ".github/workflows/test.yaml"
@@ -87,6 +87,9 @@ jobs:
 
       - name: Run Prisma migrations
         run: npm run db:migrate:prod
+
+      - name: Run Pretest Script
+        run: npm run pretest:integration
 
       - name: Run API tests
         run: npm run test:integration

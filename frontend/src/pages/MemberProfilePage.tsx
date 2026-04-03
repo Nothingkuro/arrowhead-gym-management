@@ -5,6 +5,7 @@ import MemberFormModal, { type MemberFormData } from '../components/AddMemberMod
 import ActionGroup from '../components/common/ActionGroup';
 import ProfileInfoRow from '../components/members/ProfileInfoRow';
 import StatusBadge from '../components/members/StatusBadge';
+import MemberPaymentHistoryPanel from '../components/members/payment-history/MemberPaymentHistoryPanel';
 import { API_BASE_URL } from '../services/apiBaseUrl';
 import type { Member, MemberStatus } from '../types/member';
 
@@ -95,14 +96,14 @@ interface MemberProfilePageProps {
 
 export default function MemberProfilePage({
   members,
-  initialSideTab = 'payment',
+  initialSideTab,
   initialStatus,
   disableNavigation = false,
 }: MemberProfilePageProps) {
   const { memberId } = useParams<{ memberId: string }>();
   const navigate = useNavigate();
 
-  const [activeSideTab, setActiveSideTab] = useState<SideTab>(initialSideTab);
+  const [activeSideTab, setActiveSideTab] = useState<SideTab | null>(initialSideTab ?? null);
 
   const [fetchedMember, setFetchedMember] = useState<Member | null>(null);
   const [isLoadingMember, setIsLoadingMember] = useState(!members);
@@ -113,6 +114,10 @@ export default function MemberProfilePage({
   const [editError, setEditError] = useState<string | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveSideTab(initialSideTab ?? null);
+  }, [memberId, initialSideTab]);
 
   useEffect(() => {
     if (members) {
@@ -402,6 +407,9 @@ export default function MemberProfilePage({
   /* ── Derived flags ── */
   const canCheckIn = memberStatus === 'ACTIVE';
   const canDeactivate = memberStatus !== 'INACTIVE' && !isDeactivating;
+  const handleSideTabToggle = (tab: SideTab) => {
+    setActiveSideTab((currentTab) => (currentTab === tab ? null : tab));
+  };
 
   return (
     <div className="relative min-h-full flex">
@@ -425,73 +433,77 @@ export default function MemberProfilePage({
 
         {/* ── Profile & Tabs Container ── */}
         <div className="max-w-3xl w-full mx-auto flex items-start justify-center pr-4 md:pr-12">
-          {/* ── Profile Card ── */}
-          <div
-            className="
-              max-w-2xl w-full bg-surface-alt border border-neutral-300
-              px-8 py-6 sm:px-10 sm:py-8 z-10
-            "
-          >
-            {/* Info rows */}
-            <div className="space-y-4">
-              <ProfileInfoRow label="Contact Number" value={member.contactNumber} />
-              <ProfileInfoRow label="Join Date" value={formatDate(member.joinDate)} />
-              <ProfileInfoRow label="Expiry Date" value={formatDate(member.expiryDate)} />
-              <ProfileInfoRow
-                label="Status"
-                value={
-                  <StatusBadge
-                    status={memberStatus}
-                    className="text-sm sm:text-base"
-                  />
-                }
-              />
-            </div>
-
-            {/* Notes */}
-            <div className="mt-6">
-              <span className="text-primary font-semibold text-sm sm:text-base">
-                Notes:
-              </span>
-              <div
-                className="
-                  mt-2 w-full min-h-20 px-4 py-3
-                  bg-white border border-neutral-300 rounded-md
-                  text-sm text-secondary
-                "
-              >
-                {member.notes || '\u00A0'}
+          {activeSideTab === 'payment' ? (
+            <MemberPaymentHistoryPanel memberId={member.id} />
+          ) : (
+            /* ── Profile Card ── */
+            <div
+              className="
+                max-w-2xl w-full bg-surface-alt border border-neutral-300
+                px-8 py-6 sm:px-10 sm:py-8 z-10
+              "
+            >
+              {/* Info rows */}
+              <div className="space-y-4">
+                <ProfileInfoRow label="Contact Number" value={member.contactNumber} />
+                <ProfileInfoRow label="Join Date" value={formatDate(member.joinDate)} />
+                <ProfileInfoRow label="Expiry Date" value={formatDate(member.expiryDate)} />
+                <ProfileInfoRow
+                  label="Status"
+                  value={
+                    <StatusBadge
+                      status={memberStatus}
+                      className="text-sm sm:text-base"
+                    />
+                  }
+                />
               </div>
+
+              {/* Notes */}
+              <div className="mt-6">
+                <span className="text-primary font-semibold text-sm sm:text-base">
+                  Notes:
+                </span>
+                <div
+                  className="
+                    mt-2 w-full min-h-20 px-4 py-3
+                    bg-white border border-neutral-300 rounded-md
+                    text-sm text-secondary
+                  "
+                >
+                  {member.notes || '\u00A0'}
+                </div>
+              </div>
+
+              {/* ── Action Buttons ── */}
+              <ActionGroup
+                className="mt-8"
+                actions={[
+                  {
+                    label: 'Edit Profile',
+                    onClick: handleEditProfile,
+                    variant: 'secondary',
+                  },
+                  {
+                    label: 'Check-In',
+                    onClick: handleCheckIn,
+                    disabled: !canCheckIn,
+                    variant: 'neutral',
+                  },
+                  {
+                    label: isDeactivating ? 'Deactivating...' : 'Deactivate',
+                    onClick: handleDeactivate,
+                    disabled: !canDeactivate,
+                    variant: 'danger',
+                  },
+                ]}
+              />
+
+              {deactivateError && (
+                <p className="mt-3 text-center text-sm text-red-600">{deactivateError}</p>
+              )}
             </div>
-
-            {/* ── Action Buttons ── */}
-            <ActionGroup
-              className="mt-8"
-              actions={[
-                {
-                  label: 'Edit Profile',
-                  onClick: handleEditProfile,
-                  variant: 'secondary',
-                },
-                {
-                  label: 'Check-In',
-                  onClick: handleCheckIn,
-                  disabled: !canCheckIn,
-                  variant: 'neutral',
-                },
-                {
-                  label: isDeactivating ? 'Deactivating...' : 'Deactivate',
-                  onClick: handleDeactivate,
-                  disabled: !canDeactivate,
-                  variant: 'danger',
-                },
-              ]}
-            />
-
-            {deactivateError && (
-              <p className="mt-3 text-center text-sm text-red-600">{deactivateError}</p>
-            )}
-          </div>
+          )}
 
           {/* ════════════════════════════════════════════
               Right-side vertical tabs
@@ -499,7 +511,7 @@ export default function MemberProfilePage({
           <div className="hidden md:flex flex-col gap-0 pt-0 -ml-px">
             {/* Payment History tab */}
             <button
-              onClick={() => setActiveSideTab('payment')}
+              onClick={() => handleSideTabToggle('payment')}
               className={`
                 [writing-mode:vertical-rl]
                 px-2.5 py-4 text-[8px] font-semibold tracking-wider uppercase
@@ -516,7 +528,7 @@ export default function MemberProfilePage({
 
             {/* Attendance tab */}
             <button
-              onClick={() => setActiveSideTab('attendance')}
+              onClick={() => handleSideTabToggle('attendance')}
               className={`
                 [writing-mode:vertical-rl]
                 px-2.5 py-4 text-[8px] font-semibold tracking-wider uppercase
