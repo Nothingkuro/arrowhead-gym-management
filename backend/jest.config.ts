@@ -4,6 +4,7 @@ const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
+  testMatch: ['**/?(*.)+(test|spec).ts'],
   clearMocks: true,
   collectCoverageFrom: ['src/**/*.ts']
 };
