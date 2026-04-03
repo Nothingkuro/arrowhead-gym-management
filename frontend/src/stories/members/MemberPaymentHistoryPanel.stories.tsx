@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ComponentProps } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import MemberPaymentHistoryPanel from '../../components/members/payment-history/MemberPaymentHistoryPanel';
-import type { MemberPaymentHistoryRecord } from '../../components/members/payment-history/mockPayments';
+import type { MemberPaymentHistoryRecord } from '../helpers/mockPayments';
 
 const STORY_PAYMENTS: MemberPaymentHistoryRecord[] = [
   {

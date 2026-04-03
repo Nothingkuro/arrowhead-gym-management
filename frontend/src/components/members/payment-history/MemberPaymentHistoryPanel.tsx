@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import PaymentHistoryFilters from './PaymentHistoryFilters';
 import PaymentHistoryList from './PaymentHistoryList';
-import { MOCK_MEMBER_PAYMENTS, type MemberPaymentHistoryRecord } from './mockPayments';
+import { MOCK_MEMBER_PAYMENTS, type MemberPaymentHistoryRecord } from '../../../stories/helpers/mockPayments';
 
 interface MemberPaymentHistoryPanelProps {
   memberId: string;
@@ -45,7 +45,7 @@ export default function MemberPaymentHistoryPanel({
   return (
     <section
       className="
-        w-full max-w-2xl border border-neutral-300 bg-surface-alt
+        w-130 max-w-full border border-neutral-300 bg-surface-alt
         px-5 py-5 sm:px-8 sm:py-7
       "
     >

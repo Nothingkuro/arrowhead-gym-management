@@ -1,4 +1,4 @@
-import type { MemberPaymentHistoryRecord } from './mockPayments';
+import type { MemberPaymentHistoryRecord } from '../../../stories/helpers/mockPayments';
 import PaymentHistoryCard from './PaymentHistoryCard';
 
 interface PaymentHistoryListProps {
