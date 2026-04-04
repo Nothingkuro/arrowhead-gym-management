@@ -4,19 +4,10 @@ import FilterDropdown from '../components/common/FilterDropdown';
 import EquipmentTableRow from '../components/equipment/EquipmentTableRow';
 import { EquipmentCondition, type Equipment } from '../types/equipment';
 import {
-  listMockEquipment,
-  updateMockEquipmentCondition,
-} from '../services/mockEquipmentStore';
-
-type EquipmentFilter = 'ALL' | EquipmentCondition;
-
-type MockPageResponse = {
-  items: Equipment[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-};
+  listEquipment,
+  updateEquipmentCondition,
+  type EquipmentFilter,
+} from '../services/equipmentApi';
 
 const filterOptions: Array<{ label: string; value: EquipmentFilter }> = [
   { label: 'All', value: 'ALL' },
@@ -28,133 +19,18 @@ const filterOptions: Array<{ label: string; value: EquipmentFilter }> = [
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 150;
 
-const seedEquipment: Equipment[] = [
-  {
-    id: 'EQ-001',
-    itemName: 'Olympic Barbell',
-    quantity: 6,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-04-01T09:00:00.000Z',
-    createdAt: '2026-01-10T08:00:00.000Z',
-    updatedAt: '2026-04-01T09:00:00.000Z',
-  },
-  {
-    id: 'EQ-002',
-    itemName: 'Adjustable Bench',
-    quantity: 4,
-    condition: EquipmentCondition.MAINTENANCE,
-    lastChecked: '2026-04-02T10:30:00.000Z',
-    createdAt: '2026-01-15T08:00:00.000Z',
-    updatedAt: '2026-04-02T10:30:00.000Z',
-  },
-  {
-    id: 'EQ-003',
-    itemName: 'Treadmill Pro X',
-    quantity: 3,
-    condition: EquipmentCondition.BROKEN,
-    lastChecked: '2026-04-02T14:00:00.000Z',
-    createdAt: '2026-02-01T08:00:00.000Z',
-    updatedAt: '2026-04-02T14:00:00.000Z',
-  },
-  {
-    id: 'EQ-004',
-    itemName: 'Yoga Mats',
-    quantity: 25,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-03-30T07:45:00.000Z',
-    createdAt: '2026-02-10T08:00:00.000Z',
-    updatedAt: '2026-03-30T07:45:00.000Z',
-  },
-  {
-    id: 'EQ-005',
-    itemName: 'Cable Machine',
-    quantity: 2,
-    condition: EquipmentCondition.MAINTENANCE,
-    lastChecked: '2026-03-28T16:20:00.000Z',
-    createdAt: '2026-01-20T08:00:00.000Z',
-    updatedAt: '2026-03-28T16:20:00.000Z',
-  },
-  {
-    id: 'EQ-006',
-    itemName: 'Kettlebell Set',
-    quantity: 12,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-03-27T12:15:00.000Z',
-    createdAt: '2026-02-04T08:00:00.000Z',
-    updatedAt: '2026-03-27T12:15:00.000Z',
-  },
-  {
-    id: 'EQ-007',
-    itemName: 'Leg Press Machine',
-    quantity: 1,
-    condition: EquipmentCondition.BROKEN,
-    lastChecked: '2026-03-29T11:05:00.000Z',
-    createdAt: '2026-01-26T08:00:00.000Z',
-    updatedAt: '2026-03-29T11:05:00.000Z',
-  },
-  {
-    id: 'EQ-008',
-    itemName: 'Medicine Ball Rack',
-    quantity: 2,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-04-03T09:20:00.000Z',
-    createdAt: '2026-03-01T08:00:00.000Z',
-    updatedAt: '2026-04-03T09:20:00.000Z',
-  },
-];
-
-function filterAndPaginateEquipment(
-  source: Equipment[],
-  query: string,
-  filter: EquipmentFilter,
-  page: number,
-  pageSize: number,
-): MockPageResponse {
-  const normalizedQuery = query.trim().toLowerCase();
-
-  const filtered = source.filter((equipment) => {
-    const matchesQuery =
-      !normalizedQuery ||
-      equipment.itemName.toLowerCase().includes(normalizedQuery) ||
-      equipment.id.toLowerCase().includes(normalizedQuery);
-
-    const matchesFilter = filter === 'ALL' || equipment.condition === filter;
-
-    return matchesQuery && matchesFilter;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-
-  return {
-    items: filtered.slice(start, start + pageSize),
-    total: filtered.length,
-    page: safePage,
-    pageSize,
-    totalPages,
-  };
-}
-
 interface EquipmentPageProps {
-  equipment?: Equipment[];
   initialSearchQuery?: string;
   initialFilter?: EquipmentFilter;
   initialFilterOpen?: boolean;
-  forceLoading?: boolean;
-  forcedErrorMessage?: string | null;
 }
 
 export default function EquipmentPage({
-  equipment,
   initialSearchQuery = '',
   initialFilter = 'ALL',
   initialFilterOpen = false,
-  forceLoading = false,
-  forcedErrorMessage = null,
 }: EquipmentPageProps) {
-  const [inventory, setInventory] = useState<Equipment[]>(equipment ?? seedEquipment);
-  const [equipmentList, setEquipmentList] = useState<Equipment[]>(equipment ?? []);
+  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery);
   const [filterOpen, setFilterOpen] = useState(initialFilterOpen);
@@ -165,16 +41,10 @@ export default function EquipmentPage({
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null);
   const [editingCondition, setEditingCondition] = useState<EquipmentCondition | null>(null);
-  const [isLoadingEquipment, setIsLoadingEquipment] = useState(equipment === undefined);
+  const [isLoadingEquipment, setIsLoadingEquipment] = useState(true);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
   const [isSavingCondition, setIsSavingCondition] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
-
-  useEffect(() => {
-    if (equipment) {
-      setInventory(equipment);
-    }
-  }, [equipment]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -185,41 +55,6 @@ export default function EquipmentPage({
   }, [searchQuery]);
 
   useEffect(() => {
-    if (forceLoading) {
-      setIsLoadingEquipment(true);
-      setEquipmentLoadError(null);
-      return;
-    }
-
-    if (forcedErrorMessage) {
-      setIsLoadingEquipment(false);
-      setEquipmentLoadError(forcedErrorMessage);
-      setEquipmentList([]);
-      setTotalEquipment(0);
-      setTotalPages(1);
-      return;
-    }
-
-    if (equipment) {
-      const response = filterAndPaginateEquipment(
-        inventory,
-        debouncedSearchQuery,
-        activeFilter,
-        currentPage,
-        PAGE_SIZE,
-      );
-
-      setEquipmentList(response.items);
-      setTotalEquipment(response.total);
-      setTotalPages(response.totalPages);
-      if (response.page !== currentPage) {
-        setCurrentPage(response.page);
-      }
-      setIsLoadingEquipment(false);
-      setEquipmentLoadError(null);
-      return;
-    }
-
     let isCancelled = false;
 
     const loadEquipment = async () => {
@@ -227,7 +62,7 @@ export default function EquipmentPage({
         setIsLoadingEquipment(true);
         setEquipmentLoadError(null);
 
-        const response = await listMockEquipment({
+        const response = await listEquipment({
           page: currentPage,
           pageSize: PAGE_SIZE,
           search: debouncedSearchQuery,
@@ -265,16 +100,7 @@ export default function EquipmentPage({
     return () => {
       isCancelled = true;
     };
-  }, [
-    equipment,
-    inventory,
-    debouncedSearchQuery,
-    activeFilter,
-    currentPage,
-    refreshNonce,
-    forceLoading,
-    forcedErrorMessage,
-  ]);
+  }, [debouncedSearchQuery, activeFilter, currentPage, refreshNonce]);
 
   const handleEdit = (equipmentItem: Equipment) => {
     setEditingEquipmentId(equipmentItem.id);
@@ -295,23 +121,7 @@ export default function EquipmentPage({
     setEquipmentLoadError(null);
 
     try {
-      if (equipment) {
-        const nowIso = new Date().toISOString();
-        setInventory((currentItems) =>
-          currentItems.map((item) =>
-            item.id === editingEquipmentId
-              ? {
-                  ...item,
-                  condition: editingCondition,
-                  lastChecked: nowIso,
-                  updatedAt: nowIso,
-                }
-              : item,
-          ),
-        );
-      } else {
-        await updateMockEquipmentCondition(editingEquipmentId, editingCondition);
-      }
+      await updateEquipmentCondition(editingEquipmentId, editingCondition);
 
       setEditingEquipmentId(null);
       setEditingCondition(null);

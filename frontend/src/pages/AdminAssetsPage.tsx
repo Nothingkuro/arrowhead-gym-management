@@ -7,12 +7,12 @@ import AssetFormModal, { type AssetFormData } from '../components/equipment/Asse
 import EquipmentTableRow from '../components/equipment/EquipmentTableRow';
 import { EquipmentCondition, type Equipment } from '../types/equipment';
 import {
-  createMockEquipment,
-  deleteMockEquipment,
-  listMockEquipment,
+  createEquipment,
+  deleteEquipment,
+  listEquipment,
+  updateEquipment,
   type EquipmentFilter,
-  updateMockEquipment,
-} from '../services/mockEquipmentStore';
+} from '../services/equipmentApi';
 
 const filterOptions: Array<{ label: string; value: EquipmentFilter }> = [
   { label: 'All', value: 'ALL' },
@@ -67,7 +67,7 @@ export default function AdminAssetsPage() {
         setIsLoadingAssets(true);
         setAssetsLoadError(null);
 
-        const response = await listMockEquipment({
+        const response = await listEquipment({
           page: currentPage,
           pageSize: PAGE_SIZE,
           search: debouncedSearchQuery,
@@ -139,7 +139,7 @@ export default function AdminAssetsPage() {
 
     try {
       if (assetModalMode === 'add') {
-        await createMockEquipment({
+        await createEquipment({
           itemName: data.itemName,
           quantity: data.quantity,
           condition: data.condition,
@@ -149,7 +149,7 @@ export default function AdminAssetsPage() {
           throw new Error('No asset selected for editing');
         }
 
-        await updateMockEquipment(activeAsset.id, {
+        await updateEquipment(activeAsset.id, {
           itemName: data.itemName,
           quantity: data.quantity,
           condition: data.condition,
@@ -181,7 +181,7 @@ export default function AdminAssetsPage() {
     setAssetsLoadError(null);
 
     try {
-      await deleteMockEquipment(equipment.id);
+      await deleteEquipment(equipment.id);
       setRefreshNonce((prev) => prev + 1);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to delete asset';
