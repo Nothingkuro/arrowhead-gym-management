@@ -1,15 +1,19 @@
-name: Backend Test CI
+name: Backend and E2E Test CI
 
 on:
   push:
     branches: ["dev", "feat/**", "test"]
     paths:
       - "backend/**"
+      - "frontend/**"
+      - "e2e/**"
       - ".github/workflows/test.yaml"
   pull_request:
     branches: ["dev", "test", "main"]
     paths:
       - "backend/**"
+      - "frontend/**"
+      - "e2e/**"
       - ".github/workflows/test.yaml"
   workflow_dispatch:
 
@@ -48,6 +52,7 @@ jobs:
 
     env:
       DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
       NODE_ENV: test
 
     defaults:
@@ -93,3 +98,93 @@ jobs:
 
       - name: Run API tests
         run: npm run test:integration
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: api-tests
+
+    env:
+      CI: true
+      NODE_ENV: test
+      DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+      SEED_OWNER_PASSWORD: owner123
+      SEED_STAFF_PASSWORD: staff123
+      E2E_BASE_URL: http://127.0.0.1:5173
+      E2E_HEADLESS: true
+      E2E_ALLOW_NON_TEST_DB_RESET: true
+      E2E_USE_EXISTING_BACKEND: false
+      E2E_LOGIN_USERNAME: staff
+      E2E_LOGIN_PASSWORD: staff123
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Install E2E dependencies
+        run: npm --prefix e2e ci
+
+      - name: Validate E2E secrets and DB URL
+        run: |
+          if [ -z "$DATABASE_URL_TEST" ]; then
+            echo "DATABASE_URL_TEST is missing or unavailable."
+            exit 1
+          fi
+
+          case "$DATABASE_URL_TEST" in
+            postgresql://*|postgres://*) ;;
+            *)
+              echo "DATABASE_URL_TEST must start with postgres:// or postgresql://"
+              exit 1
+              ;;
+          esac
+
+      - name: Generate Prisma Client
+        run: npm --prefix backend run db:generate
+
+      - name: Run Prisma migrations
+        run: npm --prefix backend run db:migrate:prod
+
+      - name: Run E2E tests (managed backend)
+        run: |
+          set -euo pipefail
+
+          npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 > /tmp/frontend.log 2>&1 &
+          FRONTEND_PID=$!
+
+          cleanup() {
+            kill "$FRONTEND_PID" >/dev/null 2>&1 || true
+            wait "$FRONTEND_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          if ! curl -fsS http://127.0.0.1:5173 >/dev/null; then
+            echo "Frontend failed to become ready."
+            cat /tmp/frontend.log
+            exit 1
+          fi
+
+          npm --prefix e2e run test:e2e:ci

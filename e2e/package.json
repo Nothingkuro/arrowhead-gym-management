@@ -1,0 +1,23 @@
+{
+  "name": "arrowhead-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test:e2e": "cross-env E2E_HEADLESS=false jest --config jest.e2e.config.ts --runInBand",
+    "test:e2e:headless": "cross-env E2E_HEADLESS=true jest --config jest.e2e.config.ts --runInBand",
+    "test:e2e:ci": "cross-env CI=true E2E_HEADLESS=true jest --config jest.e2e.config.ts --runInBand"
+  },
+  "devDependencies": {
+    "@types/chromedriver": "^81.0.5",
+    "@types/jest": "^30.0.0",
+    "@types/selenium-webdriver": "^4.35.5",
+    "chromedriver": "^146.0.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.3.1",
+    "jest": "^30.3.0",
+    "selenium-webdriver": "4.41.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
