@@ -142,24 +142,48 @@ function formatDate(isoDate: string) {
   });
 }
 
-export default function EquipmentPage() {
-  const [inventory, setInventory] = useState<Equipment[]>(seedEquipment);
+interface EquipmentPageProps {
+  equipment?: Equipment[];
+  initialSearchQuery?: string;
+  initialFilter?: EquipmentFilter;
+  initialFilterOpen?: boolean;
+  initialAddModalOpen?: boolean;
+  forceLoading?: boolean;
+  forcedErrorMessage?: string | null;
+}
+
+export default function EquipmentPage({
+  equipment,
+  initialSearchQuery = '',
+  initialFilter = 'ALL',
+  initialFilterOpen = false,
+  initialAddModalOpen = false,
+  forceLoading = false,
+  forcedErrorMessage = null,
+}: EquipmentPageProps) {
+  const [inventory, setInventory] = useState<Equipment[]>(equipment ?? seedEquipment);
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<EquipmentFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery);
+  const [filterOpen, setFilterOpen] = useState(initialFilterOpen);
+  const [activeFilter, setActiveFilter] = useState<EquipmentFilter>(initialFilter);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalEquipment, setTotalEquipment] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(initialAddModalOpen);
   const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null);
   const [isLoadingEquipment, setIsLoadingEquipment] = useState(true);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
   const [isSubmittingEquipment, setIsSubmittingEquipment] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
+
+  useEffect(() => {
+    if (equipment) {
+      setInventory(equipment);
+    }
+  }, [equipment]);
 
   const editingEquipment = useMemo(
     () => inventory.find((equipment) => equipment.id === editingEquipmentId) ?? null,
@@ -176,6 +200,25 @@ export default function EquipmentPage() {
 
   useEffect(() => {
     let isCancelled = false;
+
+    if (forceLoading) {
+      setIsLoadingEquipment(true);
+      setEquipmentLoadError(null);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    if (forcedErrorMessage) {
+      setIsLoadingEquipment(false);
+      setEquipmentLoadError(forcedErrorMessage);
+      setEquipmentList([]);
+      setTotalEquipment(0);
+      setTotalPages(1);
+      return () => {
+        isCancelled = true;
+      };
+    }
 
     setIsLoadingEquipment(true);
     setEquipmentLoadError(null);
@@ -220,7 +263,15 @@ export default function EquipmentPage() {
       isCancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [inventory, debouncedSearchQuery, activeFilter, currentPage, refreshNonce]);
+  }, [
+    inventory,
+    debouncedSearchQuery,
+    activeFilter,
+    currentPage,
+    refreshNonce,
+    forceLoading,
+    forcedErrorMessage,
+  ]);
 
   const closeModal = () => {
     setIsAddModalOpen(false);

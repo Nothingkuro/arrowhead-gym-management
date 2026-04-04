@@ -3,7 +3,7 @@ import { EquipmentCondition } from '../../types/equipment';
 type BadgeVariant = 'text' | 'pill';
 
 interface ConditionBadgeProps {
-  condition: EquipmentCondition;
+  condition?: EquipmentCondition | string;
   variant?: BadgeVariant;
   className?: string;
 }
@@ -26,12 +26,20 @@ const conditionStyles: Record<EquipmentCondition, { text: string; bg: string; la
   },
 };
 
+const fallbackStyle = {
+  text: 'text-neutral-500',
+  bg: 'bg-neutral-100',
+  label: 'Unknown',
+};
+
 export default function ConditionBadge({
   condition,
   variant = 'text',
   className,
 }: ConditionBadgeProps) {
-  const style = conditionStyles[condition];
+  const style = condition
+    ? conditionStyles[condition as EquipmentCondition] ?? fallbackStyle
+    : fallbackStyle;
 
   if (variant === 'pill') {
     return (

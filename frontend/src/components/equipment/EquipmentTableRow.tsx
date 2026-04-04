@@ -23,6 +23,11 @@ export default function EquipmentTableRow({
   onDelete,
   onClick,
 }: EquipmentTableRowProps) {
+  const displayedItemName =
+    equipment.itemName.length > 20
+      ? `${equipment.itemName.slice(0, 20)}...`
+      : equipment.itemName;
+
   const rowClassName = `
     border-b border-neutral-200 last:border-b-0 transition-all duration-200
     ${
@@ -46,7 +51,7 @@ export default function EquipmentTableRow({
         title={equipment.itemName}
         className={`px-4 sm:px-6 py-3 text-sm min-w-0 truncate ${isHovered ? 'text-secondary font-medium' : 'text-secondary'}`}
       >
-        {equipment.itemName}
+        {displayedItemName}
       </td>
 
       <td className={`px-4 sm:px-6 py-3 text-sm text-center whitespace-nowrap ${isHovered ? 'text-secondary font-medium' : 'text-secondary'}`}>
