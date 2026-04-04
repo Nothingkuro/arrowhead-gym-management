@@ -75,7 +75,7 @@ function stopBackend(): void {
 
   if (process.platform === 'win32') {
     try {
-      execSync(`taskkill /pid ${backendProcess.pid} /T /F`);
+      execSync(`taskkill /pid ${backendProcess.pid} /T /F`, { stdio: 'ignore' });
     } catch {
       // Best effort shutdown
     }

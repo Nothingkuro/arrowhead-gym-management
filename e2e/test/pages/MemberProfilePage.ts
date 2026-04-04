@@ -1,4 +1,5 @@
 import { By, Key, type WebDriver } from 'selenium-webdriver';
+import { Select } from 'selenium-webdriver/lib/select';
 import { buttonByText, DEFAULT_TIMEOUT_MS, waitForText, waitForUrlContains, waitForVisible } from '../utils/driverFactory';
 import type { MemberFormValues } from './MembersPage';
 
@@ -74,6 +75,50 @@ export class MemberProfilePage {
 
     await this.driver.wait(async () => {
       return !(await deactivateButton.isEnabled());
+    }, this.timeoutMs);
+  }
+
+  async openPaymentHistoryTab(): Promise<void> {
+    const paymentHistoryButton = await waitForVisible(this.driver, buttonByText('Payment History'), this.timeoutMs);
+    await paymentHistoryButton.click();
+
+    await waitForVisible(
+      this.driver,
+      By.xpath('//label[contains(normalize-space(), "Month")]/select'),
+      this.timeoutMs,
+    );
+  }
+
+  async filterPaymentHistoryByMonth(monthLabel: string): Promise<void> {
+    const monthSelect = await waitForVisible(
+      this.driver,
+      By.xpath('//label[contains(normalize-space(), "Month")]/select'),
+      this.timeoutMs,
+    );
+    const select = new Select(monthSelect);
+
+    await select.selectByVisibleText(monthLabel);
+
+    await this.driver.wait(async () => {
+      const selectedOption = await monthSelect.findElement(By.css('option:checked'));
+      return (await selectedOption.getText()).trim() === monthLabel;
+    }, this.timeoutMs);
+  }
+
+  async assertPaymentHistoryIncludes(text: string): Promise<void> {
+    await waitForVisible(
+      this.driver,
+      By.xpath(`//section[.//label[contains(normalize-space(), "Month")]]//article[contains(normalize-space(), "${text}")]`),
+      this.timeoutMs,
+    );
+  }
+
+  async assertPaymentHistoryExcludes(text: string): Promise<void> {
+    await this.driver.wait(async () => {
+      const matches = await this.driver.findElements(
+        By.xpath(`//section[.//label[contains(normalize-space(), "Month")]]//article[contains(normalize-space(), "${text}")]`),
+      );
+      return matches.length === 0;
     }, this.timeoutMs);
   }
 
