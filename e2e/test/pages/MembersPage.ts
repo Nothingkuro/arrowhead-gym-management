@@ -111,7 +111,25 @@ export class MembersPage {
 
     await this.driver.wait(async () => {
       const modalInputs = await this.driver.findElements(By.css('input[placeholder="First Name"]'));
-      return modalInputs.length === 0;
+      if (modalInputs.length === 0) {
+        return true;
+      }
+
+      const errorMessages = await this.driver.findElements(By.css('div.text-red-600'));
+      if (errorMessages.length === 0) {
+        return false;
+      }
+
+      return errorMessages[0].isDisplayed();
     }, this.timeoutMs);
+
+    const modalInputs = await this.driver.findElements(By.css('input[placeholder="First Name"]'));
+    if (modalInputs.length > 0) {
+      const errorMessages = await this.driver.findElements(By.css('div.text-red-600'));
+      const message = errorMessages.length > 0
+        ? await errorMessages[0].getText()
+        : 'Member modal did not close after submit.';
+      throw new Error(`Add member failed in E2E: ${message}`);
+    }
   }
 }
