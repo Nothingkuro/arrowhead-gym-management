@@ -9,7 +9,7 @@ export class MemberProfilePage {
   ) {}
 
   async waitUntilLoaded(): Promise<void> {
-    await waitForUrlContains(this.driver, '/dashboard/members/', 10_000);
+    await waitForUrlContains(this.driver, '/dashboard/members/', this.timeoutMs);
     await waitForVisible(this.driver, buttonByText('Edit Profile'), this.timeoutMs);
   }
 
@@ -30,7 +30,7 @@ export class MemberProfilePage {
     await this.driver.wait(async () => {
       const modalInputs = await this.driver.findElements(By.css('input[placeholder="First Name"]'));
       return modalInputs.length === 0;
-    }, 10_000);
+    }, this.timeoutMs);
   }
 
   async deactivateMember(): Promise<void> {
@@ -39,7 +39,7 @@ export class MemberProfilePage {
     await waitForVisible(
       this.driver,
       By.xpath('//span[normalize-space()="Status"]/following-sibling::span//span[normalize-space()="INACTIVE"]'),
-      10_000,
+      this.timeoutMs,
     );
   }
 
@@ -47,7 +47,7 @@ export class MemberProfilePage {
     await waitForVisible(
       this.driver,
       By.xpath(`//h1[normalize-space()="${fullName}"]`),
-      10_000,
+      this.timeoutMs,
     );
   }
 
@@ -56,7 +56,7 @@ export class MemberProfilePage {
       this.driver,
       By.xpath('//span[normalize-space()="Contact Number"]/following-sibling::span'),
       contactNumber,
-      10_000,
+      this.timeoutMs,
     );
   }
 
@@ -65,7 +65,7 @@ export class MemberProfilePage {
       this.driver,
       By.xpath('//span[normalize-space()="Notes:"]/following-sibling::div'),
       notes,
-      10_000,
+      this.timeoutMs,
     );
   }
 

@@ -2,7 +2,20 @@ import { Builder, By, type Locator, type WebDriver, type WebElement, until } fro
 import chrome from 'selenium-webdriver/chrome';
 import chromedriver from 'chromedriver';
 
-export const DEFAULT_TIMEOUT_MS = 10_000;
+function parsePositiveInteger(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+
+  return parsed;
+}
+
+export const DEFAULT_TIMEOUT_MS = parsePositiveInteger(process.env.E2E_UI_TIMEOUT_MS) ?? 10_000;
 
 export interface DriverFactoryOptions {
   headless?: boolean;

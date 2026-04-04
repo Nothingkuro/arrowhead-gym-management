@@ -112,6 +112,7 @@ jobs:
       SEED_STAFF_PASSWORD: staff123
       E2E_BASE_URL: http://127.0.0.1:5173
       E2E_HEADLESS: true
+      E2E_UI_TIMEOUT_MS: 60000
       E2E_ALLOW_NON_TEST_DB_RESET: true
       E2E_USE_EXISTING_BACKEND: false
       E2E_LOGIN_USERNAME: staff

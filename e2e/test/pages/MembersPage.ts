@@ -52,16 +52,17 @@ export class MembersPage {
   }
 
   async openMemberByFullName(fullName: string): Promise<void> {
-    const memberRow = await this.waitForMemberRow(fullName, 10_000);
+    const memberRow = await this.waitForMemberRow(fullName);
     await memberRow.click();
   }
 
-  async waitForMemberRow(fullName: string, timeoutMs = 10_000) {
+  async waitForMemberRow(fullName: string, timeoutMs?: number) {
+    const effectiveTimeoutMs = timeoutMs ?? this.timeoutMs;
     const rowLocator = By.xpath(
       `//span[@title="${fullName}"]/ancestor::div[contains(@class, "cursor-pointer")][1]`,
     );
 
-    return waitForVisible(this.driver, rowLocator, timeoutMs);
+    return waitForVisible(this.driver, rowLocator, effectiveTimeoutMs);
   }
 
   private async openAddMemberModal(): Promise<void> {
@@ -111,6 +112,6 @@ export class MembersPage {
     await this.driver.wait(async () => {
       const modalInputs = await this.driver.findElements(By.css('input[placeholder="First Name"]'));
       return modalInputs.length === 0;
-    }, 10_000);
+    }, this.timeoutMs);
   }
 }
