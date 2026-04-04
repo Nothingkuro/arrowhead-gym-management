@@ -32,3 +32,19 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({ error: 'Invalid or expired session' });
   }
 };
+
+export const requireRole = (role: string) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.authUser) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    if (req.authUser.role !== role) {
+      res.status(403).json({ error: 'Insufficient permissions' });
+      return;
+    }
+
+    next();
+  };
+};
