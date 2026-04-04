@@ -85,27 +85,26 @@ export const SearchAndFilterFlow: Story = {
   },
 };
 
-export const AddEquipmentFlow: Story = {
+export const EditConditionOnlyFlow: Story = {
   render: () => <EquipmentPageCanvas equipment={storyEquipment} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const slowUser = userEvent.setup({ delay: 120 });
 
-    await slowUser.click(canvas.getByRole('button', { name: 'Equipment' }));
+    await slowUser.click(
+      await canvas.findByRole('button', { name: /Edit condition for New Treadmill/i }),
+    );
 
-    await slowUser.type(await canvas.findByPlaceholderText('Equipment Name'), 'Spin Bike');
-    await slowUser.clear(canvas.getByPlaceholderText('Quantity'));
-    await slowUser.type(canvas.getByPlaceholderText('Quantity'), '5');
-    await slowUser.selectOptions(canvas.getByRole('combobox'), 'GOOD');
-
-    await slowUser.click(canvas.getByRole('button', { name: 'Submit' }));
+    const conditionSelect = await canvas.findByRole('combobox', {
+      name: /Condition for New Treadmill/i,
+    });
+    await slowUser.selectOptions(conditionSelect, 'BROKEN');
+    await slowUser.click(canvas.getByRole('button', { name: /Save condition for New Treadmill/i }));
 
     await waitFor(() => {
-      expect(canvas.queryByPlaceholderText('Equipment Name')).not.toBeInTheDocument();
+      expect(canvas.queryByRole('combobox', { name: /Condition for New Treadmill/i })).not.toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      expect(canvas.getByText('Spin Bike')).toBeInTheDocument();
-    });
+    expect(canvas.getByText('Broken')).toBeInTheDocument();
   },
 };

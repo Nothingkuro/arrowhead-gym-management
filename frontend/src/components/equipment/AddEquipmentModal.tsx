@@ -13,6 +13,7 @@ interface AddEquipmentModalProps {
   title?: string;
   submitLabel?: string;
   submittingLabel?: string;
+  conditionOnlyEdit?: boolean;
 }
 
 export interface EquipmentFormData {
@@ -37,6 +38,7 @@ export default function AddEquipmentModal({
   title = 'Add Equipment',
   submitLabel = 'Submit',
   submittingLabel = 'Submitting...',
+  conditionOnlyEdit = false,
 }: AddEquipmentModalProps) {
   const [formData, setFormData] = useState<EquipmentFormData>({
     itemName: '',
@@ -46,13 +48,21 @@ export default function AddEquipmentModal({
   const [isAnimating, setIsAnimating] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const conditionSelectRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => setIsAnimating(true));
-      setTimeout(() => firstInputRef.current?.focus(), 250);
+      setTimeout(() => {
+        if (conditionOnlyEdit) {
+          conditionSelectRef.current?.focus();
+          return;
+        }
+
+        firstInputRef.current?.focus();
+      }, 250);
     }
-  }, [isOpen]);
+  }, [isOpen, conditionOnlyEdit]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -166,6 +176,12 @@ export default function AddEquipmentModal({
             </div>
           )}
 
+          {conditionOnlyEdit && (
+            <div className="rounded-md border border-neutral-200 bg-neutral-100 px-3 py-2 text-xs text-neutral-600">
+              Staff can only update equipment condition.
+            </div>
+          )}
+
           <input
             ref={firstInputRef}
             type="text"
@@ -173,7 +189,7 @@ export default function AddEquipmentModal({
             placeholder="Equipment Name"
             value={formData.itemName}
             onChange={(event) => setFormData((prev) => ({ ...prev, itemName: event.target.value }))}
-            disabled={isSubmitting}
+            disabled={isSubmitting || conditionOnlyEdit}
             required
             className={inputClasses}
           />
@@ -186,12 +202,13 @@ export default function AddEquipmentModal({
             step={1}
             value={formData.quantity}
             onChange={(event) => setFormData((prev) => ({ ...prev, quantity: Number(event.target.value) }))}
-            disabled={isSubmitting}
+            disabled={isSubmitting || conditionOnlyEdit}
             required
             className={inputClasses}
           />
 
           <select
+            ref={conditionSelectRef}
             name="condition"
             value={formData.condition}
             onChange={(event) =>

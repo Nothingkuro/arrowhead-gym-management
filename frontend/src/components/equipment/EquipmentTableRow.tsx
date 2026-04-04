@@ -1,5 +1,5 @@
-import { Pencil, Trash2 } from 'lucide-react';
-import type { Equipment } from '../../types/equipment';
+import { Check, Pencil, X } from 'lucide-react';
+import { EquipmentCondition, type Equipment } from '../../types/equipment';
 import ConditionBadge from './ConditionBadge';
 
 interface EquipmentTableRowProps {
@@ -9,7 +9,11 @@ interface EquipmentTableRowProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onEdit: (equipment: Equipment) => void;
-  onDelete: (equipment: Equipment) => void;
+  isEditing?: boolean;
+  editedCondition?: EquipmentCondition;
+  onConditionChange?: (condition: EquipmentCondition) => void;
+  onSaveCondition?: () => void;
+  onCancelEdit?: () => void;
   onClick?: () => void;
 }
 
@@ -20,7 +24,11 @@ export default function EquipmentTableRow({
   onMouseEnter,
   onMouseLeave,
   onEdit,
-  onDelete,
+  isEditing = false,
+  editedCondition,
+  onConditionChange,
+  onSaveCondition,
+  onCancelEdit,
   onClick,
 }: EquipmentTableRowProps) {
   const displayedItemName =
@@ -59,39 +67,69 @@ export default function EquipmentTableRow({
       </td>
 
       <td className="px-4 sm:px-6 py-3 text-right whitespace-nowrap">
-        <ConditionBadge
-          condition={equipment.condition}
-          variant="pill"
-          className={isHovered ? 'ring-1 ring-secondary/20' : ''}
-        />
+        {isEditing ? (
+          <select
+            aria-label={`Condition for ${equipment.itemName}`}
+            value={editedCondition ?? equipment.condition}
+            onChange={(event) => onConditionChange?.(event.target.value as EquipmentCondition)}
+            className="w-36 rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
+          >
+            <option value={EquipmentCondition.GOOD}>Good</option>
+            <option value={EquipmentCondition.MAINTENANCE}>Maintenance</option>
+            <option value={EquipmentCondition.BROKEN}>Broken</option>
+          </select>
+        ) : (
+          <ConditionBadge
+            condition={equipment.condition}
+            variant="pill"
+            className={isHovered ? 'ring-1 ring-secondary/20' : ''}
+          />
+        )}
       </td>
 
       <td className="px-4 sm:px-6 py-3">
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            aria-label={`Edit ${equipment.itemName}`}
-            title="Edit"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(equipment);
-            }}
-            className="p-2 rounded-md border border-neutral-300 text-secondary hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label={`Delete ${equipment.itemName}`}
-            title="Delete"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(equipment);
-            }}
-            className="p-2 rounded-md border border-danger/40 text-danger hover:bg-danger/10 transition-colors duration-150 cursor-pointer"
-          >
-            <Trash2 size={16} />
-          </button>
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                aria-label={`Save condition for ${equipment.itemName}`}
+                title="Save condition"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSaveCondition?.();
+                }}
+                className="p-2 rounded-md border border-success/40 text-success hover:bg-success/10 transition-colors duration-150 cursor-pointer"
+              >
+                <Check size={16} />
+              </button>
+              <button
+                type="button"
+                aria-label={`Cancel editing condition for ${equipment.itemName}`}
+                title="Cancel"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCancelEdit?.();
+                }}
+                className="p-2 rounded-md border border-neutral-300 text-secondary hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              aria-label={`Edit condition for ${equipment.itemName}`}
+              title="Edit condition"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(equipment);
+              }}
+              className="p-2 rounded-md border border-neutral-300 text-secondary hover:bg-neutral-100 transition-colors duration-150 cursor-pointer"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
         </div>
       </td>
     </tr>

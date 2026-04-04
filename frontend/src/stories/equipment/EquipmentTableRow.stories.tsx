@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { fn } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import type { Equipment } from '../../types/equipment';
 import { EquipmentCondition } from '../../types/equipment';
 import EquipmentTableRow from '../../components/equipment/EquipmentTableRow';
@@ -30,7 +30,7 @@ function EquipmentTableRowStory(args: EquipmentRowStoryArgs) {
   const equipment = buildEquipment(args);
 
   return (
-    <div className="w-[760px] max-w-full rounded-lg border border-neutral-300 overflow-hidden bg-surface">
+    <div className="w-190 max-w-full rounded-lg border border-neutral-300 overflow-hidden bg-surface">
       <table className="w-full border-collapse">
         <tbody>
           <EquipmentTableRow
@@ -40,7 +40,6 @@ function EquipmentTableRowStory(args: EquipmentRowStoryArgs) {
             onMouseEnter={fn()}
             onMouseLeave={fn()}
             onEdit={fn()}
-            onDelete={fn()}
           />
         </tbody>
       </table>
@@ -112,5 +111,70 @@ export const LongName: Story = {
     condition: longNameEquipment.condition,
     isHovered: false,
     index: 3,
+  },
+};
+
+export const EditConditionAction: Story = {
+  args: {
+    id: 'EQ-EDIT-CONDITION',
+    itemName: 'Chest Fly Machine',
+    quantity: 2,
+    condition: EquipmentCondition.MAINTENANCE,
+    isHovered: true,
+    index: 4,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button', { name: 'Edit condition for Chest Fly Machine' });
+
+    await userEvent.click(button);
+
+    expect(button).toHaveAttribute('title', 'Edit condition');
+  },
+};
+
+export const InlineConditionEditing: Story = {
+  args: {
+    id: 'EQ-INLINE-EDIT',
+    itemName: 'Assisted Pull-Up Machine',
+    quantity: 2,
+    condition: EquipmentCondition.GOOD,
+    isHovered: false,
+    index: 5,
+  },
+  render: () => (
+    <div className="w-190 max-w-full rounded-lg border border-neutral-300 overflow-hidden bg-surface">
+      <table className="w-full border-collapse">
+        <tbody>
+          <EquipmentTableRow
+            equipment={buildEquipment({
+              id: 'EQ-INLINE-EDIT',
+              itemName: 'Assisted Pull-Up Machine',
+              quantity: 2,
+              condition: EquipmentCondition.GOOD,
+              isHovered: false,
+              index: 5,
+            })}
+            index={5}
+            isHovered={false}
+            onMouseEnter={fn()}
+            onMouseLeave={fn()}
+            onEdit={fn()}
+            isEditing
+            editedCondition={EquipmentCondition.MAINTENANCE}
+            onConditionChange={fn()}
+            onSaveCondition={fn()}
+            onCancelEdit={fn()}
+          />
+        </tbody>
+      </table>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    expect(canvas.getByRole('combobox', { name: 'Condition for Assisted Pull-Up Machine' })).toBeInTheDocument();
+    expect(canvas.getByRole('button', { name: 'Save condition for Assisted Pull-Up Machine' })).toBeInTheDocument();
+    expect(canvas.getByRole('button', { name: 'Cancel editing condition for Assisted Pull-Up Machine' })).toBeInTheDocument();
   },
 };

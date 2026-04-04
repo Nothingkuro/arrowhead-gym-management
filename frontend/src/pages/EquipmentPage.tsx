@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import SearchBar from '../components/common/SearchBar';
 import FilterDropdown from '../components/common/FilterDropdown';
-import AddEquipmentModal, { type EquipmentFormData } from '../components/equipment/AddEquipmentModal';
 import EquipmentTableRow from '../components/equipment/EquipmentTableRow';
 import { EquipmentCondition, type Equipment } from '../types/equipment';
 
@@ -56,7 +54,7 @@ const seedEquipment: Equipment[] = [
   },
   {
     id: 'EQ-004',
-    itemName: 'Yoga Mats',
+    itemName: 'Yoga Msd,fnksdnfldfnlats',
     quantity: 25,
     condition: EquipmentCondition.GOOD,
     lastChecked: '2026-03-30T07:45:00.000Z',
@@ -147,7 +145,6 @@ interface EquipmentPageProps {
   initialSearchQuery?: string;
   initialFilter?: EquipmentFilter;
   initialFilterOpen?: boolean;
-  initialAddModalOpen?: boolean;
   forceLoading?: boolean;
   forcedErrorMessage?: string | null;
 }
@@ -157,7 +154,6 @@ export default function EquipmentPage({
   initialSearchQuery = '',
   initialFilter = 'ALL',
   initialFilterOpen = false,
-  initialAddModalOpen = false,
   forceLoading = false,
   forcedErrorMessage = null,
 }: EquipmentPageProps) {
@@ -171,12 +167,10 @@ export default function EquipmentPage({
   const [totalEquipment, setTotalEquipment] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(initialAddModalOpen);
   const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null);
+  const [editingCondition, setEditingCondition] = useState<EquipmentCondition | null>(null);
   const [isLoadingEquipment, setIsLoadingEquipment] = useState(true);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
-  const [isSubmittingEquipment, setIsSubmittingEquipment] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
@@ -184,11 +178,6 @@ export default function EquipmentPage({
       setInventory(equipment);
     }
   }, [equipment]);
-
-  const editingEquipment = useMemo(
-    () => inventory.find((equipment) => equipment.id === editingEquipmentId) ?? null,
-    [editingEquipmentId, inventory],
-  );
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -273,101 +262,39 @@ export default function EquipmentPage({
     forcedErrorMessage,
   ]);
 
-  const closeModal = () => {
-    setIsAddModalOpen(false);
-    setEditingEquipmentId(null);
-    setFormError(null);
-  };
-
-  const handleOpenAdd = () => {
-    setEditingEquipmentId(null);
-    setFormError(null);
-    setIsAddModalOpen(true);
-  };
-
   const handleEdit = (equipment: Equipment) => {
     setEditingEquipmentId(equipment.id);
-    setFormError(null);
-    setIsAddModalOpen(true);
+    setEditingCondition(equipment.condition);
   };
 
-  const handleDelete = (equipment: Equipment) => {
-    const shouldDelete = window.confirm(`Delete ${equipment.itemName}?`);
+  const handleCancelEdit = () => {
+    setEditingEquipmentId(null);
+    setEditingCondition(null);
+  };
 
-    if (!shouldDelete) {
+  const handleSaveCondition = () => {
+    if (!editingEquipmentId || !editingCondition) {
       return;
     }
 
-    setInventory((currentItems) => currentItems.filter((item) => item.id !== equipment.id));
+    const nowIso = new Date().toISOString();
+
+    setInventory((currentItems) =>
+      currentItems.map((item) =>
+        item.id === editingEquipmentId
+          ? {
+              ...item,
+              condition: editingCondition,
+              lastChecked: nowIso,
+              updatedAt: nowIso,
+            }
+          : item,
+      ),
+    );
+
+    setEditingEquipmentId(null);
+    setEditingCondition(null);
     setRefreshNonce((prev) => prev + 1);
-  };
-
-  const handleSubmit = async (data: EquipmentFormData) => {
-    if (isSubmittingEquipment) {
-      return;
-    }
-
-    const normalizedName = data.itemName.trim();
-
-    if (!normalizedName) {
-      setFormError('Equipment name is required.');
-      return;
-    }
-
-    if (!Number.isFinite(data.quantity) || data.quantity < 0) {
-      setFormError('Quantity must be 0 or greater.');
-      return;
-    }
-
-    setIsSubmittingEquipment(true);
-    setFormError(null);
-
-    try {
-      await new Promise<void>((resolve) => {
-        window.setTimeout(() => resolve(), 180);
-      });
-
-      const nowIso = new Date().toISOString();
-
-      if (editingEquipmentId) {
-        setInventory((currentItems) =>
-          currentItems.map((item) =>
-            item.id === editingEquipmentId
-              ? {
-                  ...item,
-                  itemName: normalizedName,
-                  quantity: data.quantity,
-                  condition: data.condition,
-                  lastChecked: nowIso,
-                  updatedAt: nowIso,
-                }
-              : item,
-          ),
-        );
-      } else {
-        const createdEquipment: Equipment = {
-          id: `EQ-${Date.now()}`,
-          itemName: normalizedName,
-          quantity: data.quantity,
-          condition: data.condition,
-          lastChecked: nowIso,
-          createdAt: nowIso,
-          updatedAt: nowIso,
-        };
-
-        setInventory((currentItems) => [createdEquipment, ...currentItems]);
-        setCurrentPage(1);
-      }
-
-      setRefreshNonce((prev) => prev + 1);
-      closeModal();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to save equipment item';
-      setFormError(message);
-    } finally {
-      setIsSubmittingEquipment(false);
-    }
   };
 
   return (
@@ -448,7 +375,15 @@ export default function EquipmentPage({
                       onMouseEnter={() => setHoveredRow(index)}
                       onMouseLeave={() => setHoveredRow(null)}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      isEditing={editingEquipmentId === equipment.id}
+                      editedCondition={
+                        editingEquipmentId === equipment.id
+                          ? editingCondition ?? equipment.condition
+                          : undefined
+                      }
+                      onConditionChange={setEditingCondition}
+                      onSaveCondition={handleSaveCondition}
+                      onCancelEdit={handleCancelEdit}
                     />
                   ))
                 ) : (
@@ -490,42 +425,6 @@ export default function EquipmentPage({
           </div>
         )}
       </div>
-
-      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-20">
-        <button
-          onClick={handleOpenAdd}
-          className="
-            flex items-center gap-2 px-5 py-3 bg-primary text-text-light
-            rounded-full shadow-lg shadow-primary/30
-            hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/40
-            active:scale-95 transition-all duration-200 cursor-pointer
-            text-sm font-semibold
-          "
-        >
-          <Plus size={18} strokeWidth={2.5} />
-          <span>Equipment</span>
-        </button>
-      </div>
-
-      <AddEquipmentModal
-        isOpen={isAddModalOpen}
-        onClose={closeModal}
-        onSubmit={handleSubmit}
-        initialData={
-          editingEquipment
-            ? {
-                itemName: editingEquipment.itemName,
-                quantity: editingEquipment.quantity,
-                condition: editingEquipment.condition,
-              }
-            : undefined
-        }
-        isSubmitting={isSubmittingEquipment}
-        errorMessage={formError}
-        title={editingEquipment ? 'Edit Equipment' : 'Add Equipment'}
-        submitLabel={editingEquipment ? 'Save Changes' : 'Submit'}
-        submittingLabel={editingEquipment ? 'Saving...' : 'Submitting...'}
-      />
 
       {!isLoadingEquipment && equipmentList.length > 0 && (
         <p className="mt-6 text-center text-xs text-neutral-500">
