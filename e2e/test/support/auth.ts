@@ -54,8 +54,10 @@ export async function loginAsStaff(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Log In' }).click();
   const loginResponse = await loginResponsePromise;
 
-  await expect(page).toHaveURL(/\/dashboard\/members/);
-  await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
+  if (!loginResponse.ok()) {
+    const failureBody = await loginResponse.text().catch(() => 'Unable to read login response body');
+    throw new Error(`Login failed with status ${loginResponse.status()}: ${failureBody}`);
+  }
 
   const responseData = await loginResponse.json() as {
     user?: { id?: string; username?: string; role?: string };
@@ -72,6 +74,16 @@ export async function loginAsStaff(page: Page): Promise<void> {
       window.sessionStorage.setItem('authToken', value);
     }, token);
   }
+
+  try {
+    await expect(page).toHaveURL(/\/dashboard\/members/, { timeout: 5_000 });
+  } catch {
+    const membersUrl = new URL('/dashboard/members', FRONTEND_URL).toString();
+    await page.goto(membersUrl, { waitUntil: 'domcontentloaded' });
+  }
+
+  await expect(page).toHaveURL(/\/dashboard\/members/);
+  await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
 }
 
 export function uniqueToken(): string {

@@ -1,5 +1,13 @@
 import { execSync } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import prisma, { disconnectPrisma } from '../../src/lib/prisma';
+
+const LOCK_DIR = path.join(os.tmpdir(), 'arrowhead-e2e-db-reset.lock');
+const LOCK_MAX_AGE_MS = 5 * 60 * 1000;
+const LOCK_WAIT_TIMEOUT_MS = 60 * 1000;
+const LOCK_POLL_INTERVAL_MS = 200;
 
 function quoteIdentifier(value: string): string {
 	return `"${value.replace(/"/g, '""')}"`;
@@ -41,16 +49,62 @@ async function truncatePublicTables(): Promise<void> {
 	await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${qualifiedTables} RESTART IDENTITY CASCADE`);
 }
 
-async function main(): Promise<void> {
-	assertSafeDatabaseUrl();
-	await truncatePublicTables();
-	await disconnectPrisma();
+async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-	execSync('npm run db:seed', {
-		cwd: process.cwd(),
-		env: process.env,
-		stdio: 'inherit',
-	});
+async function acquireResetLock(): Promise<() => Promise<void>> {
+	const start = Date.now();
+
+	while (true) {
+		try {
+			await fs.mkdir(LOCK_DIR);
+			return async () => {
+				await fs.rm(LOCK_DIR, { recursive: true, force: true });
+			};
+		} catch (error) {
+			const nodeError = error as NodeJS.ErrnoException;
+
+			if (nodeError.code !== 'EEXIST') {
+				throw error;
+			}
+
+			try {
+				const stats = await fs.stat(LOCK_DIR);
+				if (Date.now() - stats.mtimeMs > LOCK_MAX_AGE_MS) {
+					await fs.rm(LOCK_DIR, { recursive: true, force: true });
+					continue;
+				}
+			} catch {
+				// Lock disappeared between checks; retry immediately.
+				continue;
+			}
+
+			if (Date.now() - start > LOCK_WAIT_TIMEOUT_MS) {
+				throw new Error('Timed out waiting for E2E DB reset lock');
+			}
+
+			await sleep(LOCK_POLL_INTERVAL_MS);
+		}
+	}
+}
+
+async function main(): Promise<void> {
+	const releaseLock = await acquireResetLock();
+
+	try {
+		assertSafeDatabaseUrl();
+		await truncatePublicTables();
+		await disconnectPrisma();
+
+		execSync('npm run db:seed', {
+			cwd: process.cwd(),
+			env: process.env,
+			stdio: 'inherit',
+		});
+	} finally {
+		await releaseLock();
+	}
 }
 
 main()
