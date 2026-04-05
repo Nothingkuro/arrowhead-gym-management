@@ -3,6 +3,8 @@ import { expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
 import { FRONTEND_URL, LOGIN_PASSWORD, LOGIN_USERNAME } from './env';
 
+const DEV_JWT_SECRET = 'dev-only-change-this-secret';
+
 function base64Url(input: string | Buffer): string {
   return Buffer.from(input)
     .toString('base64')
@@ -12,10 +14,10 @@ function base64Url(input: string | Buffer): string {
 }
 
 function signSessionToken(payload: { sub: string; username: string; role: string }): string {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET ?? (process.env.NODE_ENV !== 'production' ? DEV_JWT_SECRET : undefined);
 
   if (!secret) {
-    throw new Error('JWT_SECRET is required to mint an E2E auth token.');
+    throw new Error('JWT_SECRET is required to mint an E2E auth token in production.');
   }
 
   const header = { alg: 'HS256', typ: 'JWT' };
