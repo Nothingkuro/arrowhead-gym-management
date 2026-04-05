@@ -2,3 +2,5 @@ export { default as LoginPage } from './LoginPage';
 export { default as MembersPage } from './MembersPage';
 export { default as MemberProfilePage } from './MemberProfilePage';
 export { default as PaymentsPage } from './PaymentsPage';
+export { default as EquipmentPage } from './EquipmentPage';
+export { default as AdminAssetsPage } from './AdminAssetsPage';
