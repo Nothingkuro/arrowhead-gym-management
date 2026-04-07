@@ -3,28 +3,14 @@
   "buildCommand": "npm --prefix frontend run build",
   "installCommand": "npm install --prefix frontend && npm install --prefix backend",
   "outputDirectory": "frontend/dist",
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "backend/**"
-        ]
-      }
-    }
-  ],
-  "routes": [
+  "rewrites": [
     {
       "source": "/api/(.*)",
-      "dest": "/api/index.ts"
-    },
-    {
-      "handle": "filesystem"
+      "destination": "api/index.ts"
     },
     {
       "source": "/(.*)",
-      "dest": "/index.html"
+      "destination": "/index.html"
     }
   ]
 }
