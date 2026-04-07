@@ -10,9 +10,30 @@ import equipmentRoutes from './routes/equipment.routes';
 const app = express();
 const frontendOrigin = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
+function isAllowedFrontendOrigin(origin: string): boolean {
+	if (origin === frontendOrigin) {
+		return true;
+	}
+
+	try {
+		const originUrl = new URL(origin);
+
+		return originUrl.hostname.endsWith('.vercel.app');
+	} catch {
+		return false;
+	}
+}
+
 app.use(
 	cors({
-		origin: frontendOrigin,
+		origin: (origin, callback) => {
+			if (!origin || isAllowedFrontendOrigin(origin)) {
+				callback(null, true);
+				return;
+			}
+
+			callback(new Error(`CORS blocked origin: ${origin}`));
+		},
 		credentials: true,
 	})
 );
