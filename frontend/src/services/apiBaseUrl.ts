@@ -21,18 +21,6 @@ function toApiOrigin(value: string): string {
   }
 }
 
-function isFrontendOrigin(url: string): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  try {
-    return new URL(url).origin === window.location.origin;
-  } catch {
-    return false;
-  }
-}
-
 const configuredBaseUrlRaw = typeof import.meta.env.VITE_API_BASE_URL === 'string'
   ? import.meta.env.VITE_API_BASE_URL
   : '';
@@ -42,13 +30,12 @@ const configuredBaseUrl = configuredBaseUrlRaw
   : '';
 
 function getDefaultApiBaseUrl(): string {
+  // In production, use same-domain API (Vercel rewrites /api to backend)
   if (typeof window !== 'undefined' && import.meta.env.PROD) {
-    return window.location.origin;
+    return '';
   }
 
   return FALLBACK_API_BASE_URL;
 }
 
-export const API_BASE_URL = configuredBaseUrl
-  ? (isFrontendOrigin(configuredBaseUrl) ? '' : configuredBaseUrl)
-  : getDefaultApiBaseUrl();
+export const API_BASE_URL = configuredBaseUrl || getDefaultApiBaseUrl();
