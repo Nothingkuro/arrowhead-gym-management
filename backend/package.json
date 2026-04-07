@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "nodemon",
     "start:e2e": "ts-node --files src/server.ts",
-    "postinstall": "prisma generate",
     "build": "prisma generate && tsc",
     "start": "node dist/src/server.js",
     "test": "jest",
