@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AdminAssetsPage from '../../pages/AdminAssetsPage';
-import { setMockEquipmentStore } from '../../services/mockEquipmentStore';
+import { setMockEquipmentStore } from '../mocks/mockEquipmentStore';
 import { storyEquipment, wobblyBench } from '../helpers/mockEquipment';
 import type { Equipment } from '../../types/equipment';
 

@@ -1,7 +1,19 @@
 import '../src/index.css';
 import type { Preview } from '@storybook/react-vite'
+import {
+  installStorybookApiMock,
+  resetStorybookApiMockState,
+} from '../src/stories/mocks/storybookMockApi';
+
+installStorybookApiMock();
 
 const preview: Preview = {
+  decorators: [
+    (Story) => {
+      resetStorybookApiMockState();
+      return Story();
+    },
+  ],
   parameters: {
     actions: {
       argTypesRegex: '^on[A-Z].*',

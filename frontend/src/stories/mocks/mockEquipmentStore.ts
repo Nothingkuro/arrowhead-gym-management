@@ -1,4 +1,5 @@
-import { EquipmentCondition, type Equipment } from '../types/equipment';
+import { EquipmentCondition, type Equipment } from '../../types/equipment';
+import { storyEquipment } from '../helpers/mockEquipment';
 
 export type EquipmentFilter = 'ALL' | EquipmentCondition;
 
@@ -10,80 +11,7 @@ export type MockEquipmentListResponse = {
   totalPages: number;
 };
 
-const initialEquipment: Equipment[] = [
-  {
-    id: 'EQ-001',
-    itemName: 'Olympic Barbell',
-    quantity: 6,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-04-01T09:00:00.000Z',
-    createdAt: '2026-01-10T08:00:00.000Z',
-    updatedAt: '2026-04-01T09:00:00.000Z',
-  },
-  {
-    id: 'EQ-002',
-    itemName: 'Adjustable Bench',
-    quantity: 4,
-    condition: EquipmentCondition.MAINTENANCE,
-    lastChecked: '2026-04-02T10:30:00.000Z',
-    createdAt: '2026-01-15T08:00:00.000Z',
-    updatedAt: '2026-04-02T10:30:00.000Z',
-  },
-  {
-    id: 'EQ-003',
-    itemName: 'Treadmill Pro X',
-    quantity: 3,
-    condition: EquipmentCondition.BROKEN,
-    lastChecked: '2026-04-02T14:00:00.000Z',
-    createdAt: '2026-02-01T08:00:00.000Z',
-    updatedAt: '2026-04-02T14:00:00.000Z',
-  },
-  {
-    id: 'EQ-004',
-    itemName: 'Yoga Mats',
-    quantity: 25,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-03-30T07:45:00.000Z',
-    createdAt: '2026-02-10T08:00:00.000Z',
-    updatedAt: '2026-03-30T07:45:00.000Z',
-  },
-  {
-    id: 'EQ-005',
-    itemName: 'Cable Machine',
-    quantity: 2,
-    condition: EquipmentCondition.MAINTENANCE,
-    lastChecked: '2026-03-28T16:20:00.000Z',
-    createdAt: '2026-01-20T08:00:00.000Z',
-    updatedAt: '2026-03-28T16:20:00.000Z',
-  },
-  {
-    id: 'EQ-006',
-    itemName: 'Kettlebell Set',
-    quantity: 12,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-03-27T12:15:00.000Z',
-    createdAt: '2026-02-04T08:00:00.000Z',
-    updatedAt: '2026-03-27T12:15:00.000Z',
-  },
-  {
-    id: 'EQ-007',
-    itemName: 'Leg Press Machine',
-    quantity: 1,
-    condition: EquipmentCondition.BROKEN,
-    lastChecked: '2026-03-29T11:05:00.000Z',
-    createdAt: '2026-01-26T08:00:00.000Z',
-    updatedAt: '2026-03-29T11:05:00.000Z',
-  },
-  {
-    id: 'EQ-008',
-    itemName: 'Medicine Ball Rack',
-    quantity: 2,
-    condition: EquipmentCondition.GOOD,
-    lastChecked: '2026-04-03T09:20:00.000Z',
-    createdAt: '2026-03-01T08:00:00.000Z',
-    updatedAt: '2026-04-03T09:20:00.000Z',
-  },
-];
+const initialEquipment: Equipment[] = storyEquipment.map((item) => ({ ...item }));
 
 let equipmentStore: Equipment[] = initialEquipment.map((item) => ({ ...item }));
 
