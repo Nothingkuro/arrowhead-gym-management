@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import EquipmentPage from '../../pages/EquipmentPage';
 import { EquipmentCondition } from '../../types/equipment';
 import { storyEquipment } from '../helpers/mockEquipment';
-import { setMockEquipmentStore } from '../../services/mockEquipmentStore';
+import { setMockEquipmentStore } from '../mocks/mockEquipmentStore';
 
 const meta = {
   title: 'App/Pages/Equipment Status Page',
