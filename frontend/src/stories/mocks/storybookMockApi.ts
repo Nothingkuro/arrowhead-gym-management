@@ -1,0 +1,529 @@
+import { EquipmentCondition } from '../../types/equipment';
+import type { Member } from '../../types/member';
+import type {
+  MemberPaymentHistoryRecord,
+  MembershipPlan,
+  PaymentMethod,
+} from '../../types/payment';
+import {
+  createMockEquipment,
+  deleteMockEquipment,
+  listMockEquipment,
+  updateMockEquipment,
+  updateMockEquipmentCondition,
+} from './mockEquipmentStore';
+import { storyMembers } from '../helpers/mockMembers';
+import { mockManyMembershipPlans } from '../helpers/mockMembershipPlans';
+import { MOCK_MEMBER_PAYMENTS } from '../helpers/mockPayments';
+
+type MembersListResponse = {
+  items: Member[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+type MockApiState = {
+  members: Member[];
+  plans: MembershipPlan[];
+  payments: MemberPaymentHistoryRecord[];
+  nextMemberId: number;
+  nextPaymentId: number;
+};
+
+let restoreFetch: (() => void) | null = null;
+
+let mockApiState: MockApiState = createInitialState();
+
+function createInitialState(): MockApiState {
+  const members = storyMembers.map((member) => ({ ...member }));
+  const plans = mockManyMembershipPlans.map((plan) => ({ ...plan }));
+  const payments = MOCK_MEMBER_PAYMENTS.map((payment) => ({ ...payment }));
+
+  const maxMemberId = members.reduce((maxId, member) => {
+    const numericId = Number.parseInt(member.id, 10);
+    return Number.isFinite(numericId) ? Math.max(maxId, numericId) : maxId;
+  }, 0);
+
+  const maxPaymentId = payments.reduce((maxId, payment) => {
+    const numericId = Number.parseInt(payment.id, 10);
+    return Number.isFinite(numericId) ? Math.max(maxId, numericId) : maxId;
+  }, 0);
+
+  return {
+    members,
+    plans,
+    payments,
+    nextMemberId: maxMemberId + 1,
+    nextPaymentId: maxPaymentId + 1,
+  };
+}
+
+export function resetStorybookApiMockState(): void {
+  mockApiState = createInitialState();
+}
+
+export function installStorybookApiMock(): void {
+  if (typeof window === 'undefined' || restoreFetch) {
+    return;
+  }
+
+  const originalFetch = globalThis.fetch.bind(globalThis);
+
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const mockedResponse = await handleMockRequest(input, init);
+
+    if (mockedResponse) {
+      return mockedResponse;
+    }
+
+    return originalFetch(input, init);
+  };
+
+  restoreFetch = () => {
+    globalThis.fetch = originalFetch;
+    restoreFetch = null;
+  };
+}
+
+function getRequestMethod(input: RequestInfo | URL, init?: RequestInit): string {
+  if (init?.method) {
+    return init.method.toUpperCase();
+  }
+
+  if (input instanceof Request) {
+    return input.method.toUpperCase();
+  }
+
+  return 'GET';
+}
+
+function toRequestUrl(input: RequestInfo | URL): URL {
+  if (input instanceof URL) {
+    return input;
+  }
+
+  if (typeof input === 'string') {
+    return new URL(input, window.location.origin);
+  }
+
+  return new URL(input.url, window.location.origin);
+}
+
+async function readRequestBody(input: RequestInfo | URL, init?: RequestInit): Promise<unknown> {
+  const rawBody = init?.body;
+
+  if (typeof rawBody === 'string') {
+    try {
+      return JSON.parse(rawBody);
+    } catch {
+      return null;
+    }
+  }
+
+  if (rawBody instanceof URLSearchParams) {
+    return Object.fromEntries(rawBody.entries());
+  }
+
+  if (input instanceof Request) {
+    try {
+      const text = await input.clone().text();
+      if (!text) {
+        return null;
+      }
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+function errorResponse(message: string, status = 400): Response {
+  return jsonResponse({ error: message }, status);
+}
+
+function paginateMembers(url: URL): MembersListResponse {
+  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+  const pageSize = Math.max(1, Number.parseInt(url.searchParams.get('pageSize') ?? '20', 10) || 20);
+  const search = (url.searchParams.get('search') ?? '').trim().toLowerCase();
+  const status = (url.searchParams.get('status') ?? '').trim().toUpperCase();
+
+  const filteredMembers = mockApiState.members.filter((member) => {
+    const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
+    const matchesSearch =
+      !search
+      || fullName.includes(search)
+      || member.id.toLowerCase().includes(search)
+      || member.contactNumber.toLowerCase().includes(search);
+    const matchesStatus = !status || status === 'ALL' || member.status === status;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const total = filteredMembers.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+
+  return {
+    items: filteredMembers.slice(start, start + pageSize).map((member) => ({ ...member })),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+  };
+}
+
+function resolveMemberName(fullName: string): { firstName: string; lastName: string } {
+  const normalized = fullName.trim().replace(/\s+/g, ' ');
+
+  if (!normalized) {
+    return {
+      firstName: 'New',
+      lastName: 'Member',
+    };
+  }
+
+  const [firstName, ...lastNameParts] = normalized.split(' ');
+
+  return {
+    firstName,
+    lastName: lastNameParts.join(' ') || 'Member',
+  };
+}
+
+function toIsoDateString(dateValue: Date): string {
+  return dateValue.toISOString().slice(0, 10);
+}
+
+function addDays(dateValue: Date, dayCount: number): Date {
+  const result = new Date(dateValue);
+  result.setDate(result.getDate() + dayCount);
+  return result;
+}
+
+async function handleMembersApi(url: URL, method: string, body: unknown): Promise<Response | null> {
+  if (url.pathname === '/api/members' && method === 'GET') {
+    return jsonResponse(paginateMembers(url));
+  }
+
+  if (url.pathname === '/api/members' && method === 'POST') {
+    const payload = (body ?? {}) as { fullName?: string; contactNumber?: string };
+    const contactNumber = String(payload.contactNumber ?? '').trim();
+
+    if (!contactNumber) {
+      return errorResponse('Contact number is required', 400);
+    }
+
+    const hasDuplicate = mockApiState.members.some((member) => member.contactNumber === contactNumber);
+    if (hasDuplicate) {
+      return errorResponse('Contact number already exists.', 409);
+    }
+
+    const now = new Date();
+    const { firstName, lastName } = resolveMemberName(String(payload.fullName ?? ''));
+    const nextMember: Member = {
+      id: String(mockApiState.nextMemberId),
+      firstName,
+      lastName,
+      contactNumber,
+      joinDate: toIsoDateString(now),
+      expiryDate: toIsoDateString(addDays(now, 30)),
+      status: 'ACTIVE',
+      notes: '',
+    };
+
+    mockApiState.nextMemberId += 1;
+    mockApiState.members = [nextMember, ...mockApiState.members];
+
+    return jsonResponse(nextMember, 201);
+  }
+
+  const paymentsMatch = /^\/api\/members\/([^/]+)\/payments$/.exec(url.pathname);
+  if (paymentsMatch && method === 'GET') {
+    const [, memberId] = paymentsMatch;
+    const memberPayments = mockApiState.payments
+      .filter((payment) => payment.memberId === memberId)
+      .map((payment) => ({ ...payment }));
+
+    return jsonResponse(memberPayments);
+  }
+
+  const deactivateMatch = /^\/api\/members\/([^/]+)\/deactivate$/.exec(url.pathname);
+  if (deactivateMatch && method === 'PATCH') {
+    const [, memberId] = deactivateMatch;
+    const existingMemberIndex = mockApiState.members.findIndex((member) => member.id === memberId);
+
+    if (existingMemberIndex < 0) {
+      return errorResponse('Member not found', 404);
+    }
+
+    const updatedMember: Member = {
+      ...mockApiState.members[existingMemberIndex],
+      status: 'INACTIVE',
+      expiryDate: '',
+    };
+
+    mockApiState.members[existingMemberIndex] = updatedMember;
+
+    return jsonResponse(updatedMember);
+  }
+
+  const editMemberMatch = /^\/api\/members\/([^/]+)$/.exec(url.pathname);
+  if (editMemberMatch && method === 'PATCH') {
+    const [, memberId] = editMemberMatch;
+    const payload = (body ?? {}) as {
+      firstName?: string;
+      lastName?: string;
+      contactNumber?: string;
+    };
+
+    const existingMemberIndex = mockApiState.members.findIndex((member) => member.id === memberId);
+    if (existingMemberIndex < 0) {
+      return errorResponse('Member not found', 404);
+    }
+
+    const normalizedContact = String(payload.contactNumber ?? '').replace(/\D/g, '');
+    if (!normalizedContact) {
+      return errorResponse('Contact number is required.', 400);
+    }
+
+    const duplicateContact = mockApiState.members.some(
+      (member) => member.id !== memberId && member.contactNumber === normalizedContact,
+    );
+
+    if (duplicateContact) {
+      return errorResponse('Contact number already exists.', 409);
+    }
+
+    const updatedMember: Member = {
+      ...mockApiState.members[existingMemberIndex],
+      firstName: String(payload.firstName ?? '').trim() || mockApiState.members[existingMemberIndex].firstName,
+      lastName: String(payload.lastName ?? '').trim() || mockApiState.members[existingMemberIndex].lastName,
+      contactNumber: normalizedContact,
+    };
+
+    mockApiState.members[existingMemberIndex] = updatedMember;
+
+    return jsonResponse(updatedMember);
+  }
+
+  return null;
+}
+
+async function handlePlansApi(url: URL, method: string): Promise<Response | null> {
+  if (url.pathname === '/api/plans' && method === 'GET') {
+    return jsonResponse(mockApiState.plans.map((plan) => ({ ...plan })));
+  }
+
+  return null;
+}
+
+async function handlePaymentsApi(url: URL, method: string, body: unknown): Promise<Response | null> {
+  if (url.pathname !== '/api/payments' || method !== 'POST') {
+    return null;
+  }
+
+  const payload = (body ?? {}) as {
+    memberId?: string;
+    planId?: string;
+    paymentMethod?: PaymentMethod;
+    amountPaid?: number;
+  };
+
+  const memberId = String(payload.memberId ?? '').trim();
+  const planId = String(payload.planId ?? '').trim();
+
+  if (!memberId || !planId) {
+    return errorResponse('memberId and planId are required', 400);
+  }
+
+  const member = mockApiState.members.find((item) => item.id === memberId);
+  if (!member) {
+    return errorResponse('Member not found', 404);
+  }
+
+  const plan = mockApiState.plans.find((item) => item.id === planId);
+  const paidAt = new Date().toISOString();
+  const amountPhp = Number(payload.amountPaid ?? plan?.price ?? 0);
+
+  const paymentRecord: MemberPaymentHistoryRecord = {
+    id: String(mockApiState.nextPaymentId),
+    memberId,
+    paidAt,
+    amountPhp,
+    membershipPlan: plan?.name ?? 'Membership Plan',
+    processedBy: 'Storybook Staff',
+    paymentMethod: payload.paymentMethod === 'GCASH' ? 'GCASH' : 'CASH',
+  };
+
+  mockApiState.nextPaymentId += 1;
+  mockApiState.payments = [paymentRecord, ...mockApiState.payments];
+
+  if (plan) {
+    const now = new Date();
+    const nextExpiryDate = toIsoDateString(addDays(now, plan.durationDays));
+    mockApiState.members = mockApiState.members.map((item) => {
+      if (item.id !== memberId) {
+        return item;
+      }
+
+      return {
+        ...item,
+        status: 'ACTIVE',
+        expiryDate: nextExpiryDate,
+      };
+    });
+  }
+
+  return jsonResponse({
+    id: paymentRecord.id,
+    memberId,
+    planId,
+    paymentMethod: paymentRecord.paymentMethod,
+    amountPaid: amountPhp,
+  }, 201);
+}
+
+async function handleAuthApi(url: URL, method: string, body: unknown): Promise<Response | null> {
+  if (url.pathname !== '/api/auth/login' || method !== 'POST') {
+    return null;
+  }
+
+  const payload = (body ?? {}) as { username?: string; role?: string };
+  const requestedRole = String(payload.role ?? '').toLowerCase();
+
+  const resolvedRole = requestedRole === 'owner' ? 'ADMIN' : 'STAFF';
+
+  return jsonResponse({
+    user: {
+      id: 'storybook-user',
+      username: String(payload.username ?? 'storybook.user').trim() || 'storybook.user',
+      role: resolvedRole,
+    },
+  });
+}
+
+async function handleEquipmentApi(url: URL, method: string, body: unknown): Promise<Response | null> {
+  if (url.pathname === '/api/equipment' && method === 'GET') {
+    const response = await listMockEquipment({
+      page: Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1,
+      pageSize: Number.parseInt(url.searchParams.get('pageSize') ?? '20', 10) || 20,
+      search: url.searchParams.get('search') ?? undefined,
+      condition: (url.searchParams.get('condition') ?? 'ALL') as
+        | 'ALL'
+        | EquipmentCondition,
+    });
+
+    return jsonResponse(response);
+  }
+
+  if (url.pathname === '/api/equipment' && method === 'POST') {
+    const payload = (body ?? {}) as {
+      itemName?: string;
+      quantity?: number;
+      condition?: EquipmentCondition;
+    };
+
+    const createdEquipment = await createMockEquipment({
+      itemName: String(payload.itemName ?? ''),
+      quantity: Number(payload.quantity ?? 0),
+      condition: payload.condition ?? EquipmentCondition.GOOD,
+    });
+
+    return jsonResponse(createdEquipment, 201);
+  }
+
+  const conditionMatch = /^\/api\/equipment\/([^/]+)\/condition$/.exec(url.pathname);
+  if (conditionMatch && method === 'PUT') {
+    const [, equipmentId] = conditionMatch;
+    const payload = (body ?? {}) as { condition?: EquipmentCondition };
+
+    try {
+      const updatedEquipment = await updateMockEquipmentCondition(
+        equipmentId,
+        payload.condition ?? EquipmentCondition.GOOD,
+      );
+      return jsonResponse(updatedEquipment);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Equipment not found';
+      return errorResponse(message, 404);
+    }
+  }
+
+  const updateMatch = /^\/api\/equipment\/([^/]+)$/.exec(url.pathname);
+  if (updateMatch && method === 'PUT') {
+    const [, equipmentId] = updateMatch;
+    const payload = (body ?? {}) as {
+      itemName?: string;
+      quantity?: number;
+      condition?: EquipmentCondition;
+    };
+
+    try {
+      const updatedEquipment = await updateMockEquipment(equipmentId, {
+        itemName: String(payload.itemName ?? ''),
+        quantity: Number(payload.quantity ?? 0),
+        condition: payload.condition ?? EquipmentCondition.GOOD,
+      });
+      return jsonResponse(updatedEquipment);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Equipment not found';
+      return errorResponse(message, 404);
+    }
+  }
+
+  if (updateMatch && method === 'DELETE') {
+    const [, equipmentId] = updateMatch;
+
+    try {
+      await deleteMockEquipment(equipmentId);
+      return jsonResponse({ success: true });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Equipment not found';
+      return errorResponse(message, 404);
+    }
+  }
+
+  return null;
+}
+
+async function handleMockRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response | null> {
+  const url = toRequestUrl(input);
+
+  if (!url.pathname.startsWith('/api/')) {
+    return null;
+  }
+
+  const method = getRequestMethod(input, init);
+  const body = await readRequestBody(input, init);
+
+  const handlers = [
+    handleAuthApi,
+    handleMembersApi,
+    handlePlansApi,
+    handlePaymentsApi,
+    handleEquipmentApi,
+  ];
+
+  for (const handler of handlers) {
+    const response = await handler(url, method, body);
+    if (response) {
+      return response;
+    }
+  }
+
+  return errorResponse(`No Storybook mock handler for ${method} ${url.pathname}`, 404);
+}
