@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { FRONTEND_URL, LOGIN_PASSWORD, LOGIN_USERNAME } from './env';
@@ -52,5 +53,5 @@ export async function loginAsStaff(page: Page): Promise<void> {
 }
 
 export function uniqueToken(): string {
-  return `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-8);
+  return crypto.randomBytes(4).toString('hex').slice(0, 8);
 }
