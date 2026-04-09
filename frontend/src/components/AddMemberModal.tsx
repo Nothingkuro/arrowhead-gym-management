@@ -64,16 +64,12 @@ export default function MemberFormModal({
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      const resetTimer = window.setTimeout(() => {
-        setFormData({
-          firstName: initialData?.firstName ?? '',
-          lastName: initialData?.lastName ?? '',
-          contactNumber: initialData?.contactNumber ?? '',
-          notes: initialData?.notes ?? '',
-        });
-      }, 0);
-
-      return () => window.clearTimeout(resetTimer);
+      setFormData({
+        firstName: initialData?.firstName ?? '',
+        lastName: initialData?.lastName ?? '',
+        contactNumber: initialData?.contactNumber ?? '',
+        notes: initialData?.notes ?? '',
+      });
     }
   }, [isOpen, initialData]);
 
