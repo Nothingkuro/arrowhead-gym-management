@@ -17,20 +17,27 @@ export async function loginAsStaff(page: Page): Promise<void> {
   const loginResponsePromise = page.waitForResponse((response) => {
     return response.url().includes('/api/auth/login') && response.request().method() === 'POST';
   });
-  await page.getByRole('button', { name: 'Log In' }).click();
-  const loginResponse = await loginResponsePromise;
 
+  await Promise.all([
+    // if the app does navigate after login, catch it; if not, that's fine
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+    page.getByRole('button', { name: 'Log In' }).click(),
+  ]);
+
+  const loginResponse = await loginResponsePromise;
   if (!loginResponse.ok()) {
     const failureBody = await loginResponse.text().catch(() => 'Unable to read login response body');
     throw new Error(`Login failed with status ${loginResponse.status()}: ${failureBody}`);
   }
 
-  try {
-    await expect(page).toHaveURL(/\/dashboard\/members/, { timeout: 5_000 });
-  } catch {
-    const membersUrl = new URL('/dashboard/members', FRONTEND_URL).toString();
-    await page.goto(membersUrl, { waitUntil: 'domcontentloaded' });
-  }
+  // Wait until we appear to be "in the dashboard area" (more stable than a single exact URL)
+  await expect(page).toHaveURL(/\/dashboard(\/|$)/, { timeout: 15_000 }).catch(() => {
+    // If your app doesn't auto-redirect reliably in CI, force the target page
+  });
+
+  // Force the page your tests expect
+  const membersUrl = new URL('/dashboard/members', FRONTEND_URL).toString();
+  await page.goto(membersUrl, { waitUntil: 'domcontentloaded' });
 
   await expect(page).toHaveURL(/\/dashboard\/members/);
   await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
