@@ -56,18 +56,18 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
+          POSTGRES_DB: testdb
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d test_db"
+          --health-cmd "pg_isready -U postgres -d testdb"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
 
     env:
-      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
       NODE_ENV: test
 
     defaults:
@@ -132,11 +132,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
+          POSTGRES_DB: testdb
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d test_db"
+          --health-cmd "pg_isready -U postgres -d testdb"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -144,8 +144,8 @@ jobs:
     env:
       CI: true
       NODE_ENV: test
-      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
       SEED_OWNER_PASSWORD: ${{ secrets.SEED_OWNER_PASSWORD }}
       SEED_STAFF_PASSWORD: ${{ secrets.SEED_STAFF_PASSWORD }}
       E2E_BASE_URL: http://localhost:5173
