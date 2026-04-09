@@ -14,5 +14,5 @@ if (process.env.DATABASE_URL_TEST) {
 }
 
 export const FRONTEND_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173';
-export const LOGIN_USERNAME = process.env.E2E_LOGIN_USERNAME || process.env.SEED_STAFF_USERNAME;
-export const LOGIN_PASSWORD = process.env.E2E_LOGIN_PASSWORD || process.env.SEED_STAFF_PASSWORD;
+export const LOGIN_USERNAME = process.env.E2E_LOGIN_USERNAME ?? process.env.SEED_STAFF_USERNAME ?? 'staff';
+export const LOGIN_PASSWORD = process.env.E2E_LOGIN_PASSWORD ?? process.env.SEED_STAFF_PASSWORD;

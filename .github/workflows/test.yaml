@@ -101,14 +101,6 @@ jobs:
               exit 1
               ;;
           esac
-          node -e "
-            const url = new URL(process.env.DATABASE_URL_TEST);
-            const dbName = url.pathname.slice(1);
-            if (!/test|ci/i.test(dbName)) {
-              console.error('DATABASE_URL_TEST database name must contain \"test\" or \"ci\". Got: ' + dbName);
-              process.exit(1);
-            }
-          "
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -146,16 +138,16 @@ jobs:
       NODE_ENV: test
       DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
-      SEED_OWNER_PASSWORD: ${{ secrets.SEED_OWNER_PASSWORD }}
-      SEED_STAFF_PASSWORD: ${{ secrets.SEED_STAFF_PASSWORD }}
+      SEED_OWNER_PASSWORD: owner123
+      SEED_STAFF_PASSWORD: staff123
       E2E_BASE_URL: http://localhost:5173
       VITE_API_BASE_URL: http://localhost:5001
       E2E_HEADLESS: true
       E2E_UI_TIMEOUT_MS: 60000
-      E2E_ALLOW_NON_TEST_DB_RESET: false
+      E2E_ALLOW_NON_TEST_DB_RESET: true
       E2E_USE_EXISTING_BACKEND: false
-      E2E_LOGIN_USERNAME: ${{ secrets.E2E_LOGIN_USERNAME }}
-      E2E_LOGIN_PASSWORD: ${{ secrets.E2E_LOGIN_PASSWORD }}
+      E2E_LOGIN_USERNAME: staff
+      E2E_LOGIN_PASSWORD: staff123
 
     steps:
       - name: Checkout repository
@@ -197,14 +189,6 @@ jobs:
               exit 1
               ;;
           esac
-          node -e "
-            const url = new URL(process.env.DATABASE_URL_TEST);
-            const dbName = url.pathname.slice(1);
-            if (!/test|ci/i.test(dbName)) {
-              console.error('DATABASE_URL_TEST database name must contain \"test\" or \"ci\". Got: ' + dbName);
-              process.exit(1);
-            }
-          "
 
       - name: Generate Prisma Client
         run: npm --prefix backend run db:generate

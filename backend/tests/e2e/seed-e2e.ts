@@ -40,8 +40,8 @@ function requiredEnv(name: string): string {
 export async function seedE2EDatabase(): Promise<void> {
 	assertSafeDatabaseUrl();
 
-	const ownerUsername = process.env.SEED_OWNER_USERNAME || 'owner';
-	const staffUsername = process.env.SEED_STAFF_USERNAME || 'staff';
+	const ownerUsername = process.env.SEED_OWNER_USERNAME ?? 'owner';
+	const staffUsername = process.env.SEED_STAFF_USERNAME ?? 'staff';
 	const ownerPasswordHash = await hashPassword(requiredEnv('SEED_OWNER_PASSWORD'));
 	const staffPasswordHash = await hashPassword(requiredEnv('SEED_STAFF_PASSWORD'));
 
