@@ -39,7 +39,7 @@ export async function loginAsStaff(page: Page): Promise<void> {
   const membersUrl = new URL('/dashboard/members', FRONTEND_URL).toString();
   await page.goto(membersUrl, { waitUntil: 'domcontentloaded' });
 
-  await expect(page).toHaveURL(/\/dashboard\/members/);
+  await expect(page).toHaveURL(/\/dashboard\/members\/?(\?.*)?$/);
   await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
 }
 

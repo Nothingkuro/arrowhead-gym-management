@@ -17,6 +17,10 @@ on:
       - ".github/workflows/test.yaml"
   workflow_dispatch:
 
+concurrency:
+  group: backend-ci-migrations
+  cancel-in-progress: false
+
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
@@ -54,6 +58,7 @@ jobs:
       DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
       DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
       NODE_ENV: test
+      PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT: "60000"
 
     defaults:
       run:
@@ -108,6 +113,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
       DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+      PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT: "60000"
       SEED_OWNER_PASSWORD: owner123
       SEED_STAFF_PASSWORD: staff123
       E2E_BASE_URL: http://localhost:5173
