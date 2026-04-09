@@ -241,4 +241,24 @@ jobs:
             tail -n 200 /tmp/frontend.log || true
             exit "$TEST_EXIT"
           fi
+  cloud-migration-check:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Migration on Neon Test DB
+        env:
+          # Use the DIRECT URL secret here to avoid the pooler timeout
+          DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL_TEST }}
+          # Keep the timeout high just in case of a cold start
+          PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT: 60000 
+        run: npx prisma migrate deploy     
 

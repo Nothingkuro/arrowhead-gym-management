@@ -38,10 +38,19 @@ function normalizeDatabaseUrl(rawValue: string | undefined | null): string | und
 // Load .env file before accessing environment variables
 dotenv.config({ path: path.join(__dirname, ".env") });
 
+const pooledUrl = normalizeDatabaseUrl(process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL);
+const directMigrationUrl = normalizeDatabaseUrl(
+  process.env.DIRECT_DATABASE_URL_TEST ?? process.env.DIRECT_URL_TEST ?? process.env.DIRECT_URL ?? process.env.DATABASE_URL,
+);
+const isMigrateCommand = process.argv.some((arg) => arg === "migrate" || arg.includes("prisma/migrate"));
+const datasourceUrl = isMigrateCommand ? directMigrationUrl ?? pooledUrl : pooledUrl ?? directMigrationUrl;
+
 export default defineConfig({
   schema: path.join(__dirname, "prisma", "schema.prisma"),
 
   datasource: {
-    url: normalizeDatabaseUrl(process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL),
+    // Prisma 7.6 config supports a single datasource URL.
+    // Use Neon direct URL for migrate commands and pooled URL otherwise.
+    url: datasourceUrl,
   },
 });
