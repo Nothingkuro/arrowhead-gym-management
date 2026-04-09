@@ -96,7 +96,7 @@ jobs:
         run: npx prisma generate
 
       - name: Run Prisma migrations
-        run: npm run db:migrate:prod
+        run: PRISMA_MIGRATE_ADVISORY_LOCK_TIMEOUT=120000 npm run db:migrate:prod
 
       - name: Run Pretest Script
         run: npm run pretest:integration
@@ -169,8 +169,7 @@ jobs:
       - name: Generate Prisma Client
         run: npm --prefix backend run db:generate
 
-      - name: Run Prisma migrations
-        run: npm --prefix backend run db:migrate:prod
+
 
       - name: Run E2E tests (managed backend)
         run: |
