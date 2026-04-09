@@ -9,7 +9,16 @@ function assertSafeDatabaseUrl(): void {
 		throw new Error('DATABASE_URL is required for E2E seeding.');
 	}
 
-	const isLikelyTestDatabase = /test/i.test(databaseUrl);
+	let databaseName = '';
+	try {
+		const parsed = new URL(databaseUrl);
+		databaseName = parsed.pathname.split('/').filter(Boolean).pop() ?? '';
+	} catch {
+		const afterSlash = databaseUrl.split('/').pop() ?? '';
+		databaseName = afterSlash.split('=').pop() ?? '';
+	}
+
+	const isLikelyTestDatabase = /\btest\b/i.test(databaseName) || /(^|[_-])test($|[_-])/i.test(databaseName);
 	if (!isLikelyTestDatabase && process.env.E2E_ALLOW_NON_TEST_DB_RESET !== 'true') {
 		throw new Error(
 			'Refusing to seed DATABASE_URL because it does not look like a test database. ' +

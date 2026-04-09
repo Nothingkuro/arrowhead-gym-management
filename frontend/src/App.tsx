@@ -9,6 +9,14 @@ import {
   AdminAssetsPage,
 } from './pages';
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const token = sessionStorage.getItem('authToken');
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <BrowserRouter>
@@ -20,45 +28,55 @@ function App() {
         <Route
           path="/dashboard/members"
           element={
-            <MainLayout>
-              <MembersPage />
-            </MainLayout>
+            <ProtectedRoute>
+              <MainLayout>
+                <MembersPage />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/dashboard/members/:memberId"
           element={
-            <MainLayout>
-              <MemberProfilePage />
-            </MainLayout>
+            <ProtectedRoute>
+              <MainLayout>
+                <MemberProfilePage />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/dashboard/payments"
           element={
-            <MainLayout>
-              <PaymentsPage />
-            </MainLayout>
+            <ProtectedRoute>
+              <MainLayout>
+                <PaymentsPage />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/dashboard/inventory"
           element={
-            <MainLayout>
-              <EquipmentPage />
-            </MainLayout>
+            <ProtectedRoute>
+              <MainLayout>
+                <EquipmentPage />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/dashboard/manage-assets"
           element={
-            <MainLayout>
-              <AdminAssetsPage />
-            </MainLayout>
+            <ProtectedRoute>
+              <MainLayout>
+                <AdminAssetsPage />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
 
