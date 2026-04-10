@@ -149,9 +149,12 @@ export default function SuppliersPage() {
           })),
         );
         setTransactionsTotal(response.total);
-        setTransactionsTotalPages(Math.max(1, response.totalPages));
+        const clampedTotalPages = Math.max(1, response.totalPages);
+        setTransactionsTotalPages(clampedTotalPages);
 
-        if (response.page !== transactionsPage) {
+        if (transactionsPage > clampedTotalPages) {
+          setTransactionsPage(clampedTotalPages);
+        } else if (response.page !== transactionsPage) {
           setTransactionsPage(response.page);
         }
       } catch (error: unknown) {

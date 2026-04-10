@@ -764,8 +764,8 @@ async function handleSuppliersApi(url: URL, method: string, body: unknown): Prom
       return errorResponse('Items purchased is required.', 400);
     }
 
-    if (!Number.isFinite(totalCost) || totalCost < 0) {
-      return errorResponse('Total cost must be a non-negative number.', 400);
+    if (!Number.isFinite(totalCost) || totalCost <= 0) {
+      return errorResponse('Total cost must be a positive number.', 400);
     }
 
     const parsedTransactionDate = payload.transactionDate
