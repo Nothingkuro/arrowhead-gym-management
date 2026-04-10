@@ -3,7 +3,26 @@ import { loginAsStaff, uniqueToken } from '../support/auth';
 import { resetDatabase } from '../support/db';
 
 function buildMemberNamePattern(firstName: string, lastName: string): RegExp {
-  return new RegExp(`${firstName}[\\s\\S]*${lastName}`);
+  return new RegExp(`^\\s*${firstName}\\s+${lastName}\\s*$`);
+}
+
+async function searchMemberByContact(page: Page, contactNumber: string): Promise<void> {
+  const encodedContact = encodeURIComponent(contactNumber);
+
+  await Promise.all([
+    page.waitForResponse((response) => (
+      response.request().method() === 'GET'
+      && response.url().includes('/api/members?')
+      && response.url().includes(`search=${encodedContact}`)
+      && response.ok()
+    )),
+    page.getByPlaceholder('Search member...').fill(contactNumber),
+  ]);
+
+  const loadingMembersText = page.getByText('Loading members...');
+  if (await loadingMembersText.isVisible().catch(() => false)) {
+    await expect(loadingMembersText).toBeHidden({ timeout: 10_000 });
+  }
 }
 
 async function submitMemberModal(page: Page): Promise<void> {
@@ -46,7 +65,7 @@ test.describe('Membership management e2e', () => {
     await page.getByPlaceholder('Notes').fill(`Add member notes ${token}`);
     await submitMemberModal(page);
 
-    await page.getByPlaceholder('Search member...').fill(contactNumber);
+    await searchMemberByContact(page, contactNumber);
     await expect(page.getByText(buildMemberNamePattern(firstName, lastName))).toBeVisible();
   });
 
@@ -66,7 +85,7 @@ test.describe('Membership management e2e', () => {
     await page.getByRole('button', { name: 'Filter' }).click();
     await page.getByRole('button', { name: 'Active', exact: true }).click();
 
-    await page.getByPlaceholder('Search member...').fill(contactNumber);
+    await searchMemberByContact(page, contactNumber);
     await page.getByText(buildMemberNamePattern(firstName, lastName)).click();
 
     await expect(page).toHaveURL(/\/dashboard\/members\/.+/);

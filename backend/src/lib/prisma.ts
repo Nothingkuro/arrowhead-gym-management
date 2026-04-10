@@ -10,6 +10,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { normalizeDatabaseUrl } from "../config/env";
 
 // Extend globalThis to include prisma for development hot-reload handling
 const globalForPrisma = globalThis as unknown as {
@@ -21,7 +22,7 @@ const globalForPrisma = globalThis as unknown as {
  * Creates a PrismaClient instance with the PostgreSQL adapter
  */
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL);
 
   if (!connectionString) {
     throw new Error("DATABASE_URL environment variable is required");

@@ -50,9 +50,24 @@ jobs:
   api-tests:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d testdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
-      DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
       NODE_ENV: test
 
     defaults:

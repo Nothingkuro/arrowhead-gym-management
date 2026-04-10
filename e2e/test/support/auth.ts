@@ -17,23 +17,38 @@ export async function loginAsStaff(page: Page): Promise<void> {
   const loginResponsePromise = page.waitForResponse((response) => {
     return response.url().includes('/api/auth/login') && response.request().method() === 'POST';
   });
-  await page.getByRole('button', { name: 'Log In' }).click();
-  const loginResponse = await loginResponsePromise;
 
+  await Promise.all([
+    // if the app does navigate after login, catch it; if not, that's fine
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+    page.getByRole('button', { name: 'Log In' }).click(),
+  ]);
+
+  const loginResponse = await loginResponsePromise;
   if (!loginResponse.ok()) {
     const failureBody = await loginResponse.text().catch(() => 'Unable to read login response body');
     throw new Error(`Login failed with status ${loginResponse.status()}: ${failureBody}`);
   }
 
-  try {
-    await expect(page).toHaveURL(/\/dashboard\/members/, { timeout: 5_000 });
-  } catch {
-    const membersUrl = new URL('/dashboard/members', FRONTEND_URL).toString();
-    await page.goto(membersUrl, { waitUntil: 'domcontentloaded' });
+  // Ensure the frontend successfully stores the role in sessionStorage
+  await page.waitForFunction(() => window.sessionStorage.getItem('authRole') !== null, undefined, { timeout: 10_000 }).catch(() => {
+    throw new Error('E2E Login Helper: authRole never appeared in sessionStorage after login request.');
+  });
+
+  // Force the page your tests expect
+  const membersUrl = new URL('/dashboard/members', FRONTEND_URL).toString();
+  await page.goto(membersUrl, { waitUntil: 'domcontentloaded' });
+
+  // If we got redirected back to a login-ish page, fail with a clear error
+  if (!page.url().includes('/dashboard')) {
+    throw new Error(`Not authenticated after login; redirected to: ${page.url()}`);
   }
 
-  await expect(page).toHaveURL(/\/dashboard\/members/);
-  await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
+  // Prefer a stable UI assertion as the real success criteria
+  await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible({ timeout: 15_000 });
+
+  // Keep a soft URL check
+  await expect(page).toHaveURL(/\/dashboard\/members\/?(\?.*)?$/);
 }
 
 export function uniqueToken(): string {

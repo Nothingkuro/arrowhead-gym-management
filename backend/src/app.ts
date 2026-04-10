@@ -28,11 +28,24 @@ function parseAllowedOrigins(value: string | undefined): Set<string> {
 
 const allowedOrigins = parseAllowedOrigins(process.env.FRONTEND_URL);
 
+function isAllowedFrontendOrigin(origin: string): boolean {
+	if (origin === frontendOrigin) {
+		return true;
+	}
+
+	try {
+		const originUrl = new URL(origin);
+
+		return originUrl.hostname.endsWith('.vercel.app');
+	} catch {
+		return false;
+	}
+}
+
 app.use(
 	cors({
 		origin: (origin, callback) => {
-			// Allow non-browser clients and same-origin requests with no Origin header.
-			if (!origin) {
+			if (!origin || isAllowedFrontendOrigin(origin)) {
 				callback(null, true);
 				return;
 			}

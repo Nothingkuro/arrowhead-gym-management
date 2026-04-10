@@ -41,7 +41,7 @@ describe('auth utils', () => {
 
     expect(options.httpOnly).toBe(true);
     expect(options.secure).toBe(true);
-    expect(options.sameSite).toBe('lax');
+    expect(options.sameSite).toBe('none');
     expect(options.path).toBe('/');
     expect(options.maxAge).toBe(7 * 24 * 60 * 60 * 1000);
   });

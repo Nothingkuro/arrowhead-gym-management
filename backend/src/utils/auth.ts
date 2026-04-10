@@ -6,6 +6,8 @@ import type { AuthUser, SessionTokenPayload } from '../types/auth';
 const DEFAULT_SESSION_TTL = '7d';
 const DEFAULT_COOKIE_NAME = 'arrowhead_session';
 const DEV_JWT_SECRET = 'dev-only-change-this-secret';
+const DEFAULT_PROD_COOKIE_SAME_SITE = 'none';
+const DEFAULT_NON_PROD_COOKIE_SAME_SITE = 'lax';
 
 function getJwtSecret(): string {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
@@ -25,11 +27,40 @@ function getSessionTtl(): jwt.SignOptions['expiresIn'] {
   return (process.env.SESSION_TTL ?? DEFAULT_SESSION_TTL) as jwt.SignOptions['expiresIn'];
 }
 
+function getSessionCookieSameSite(): NonNullable<CookieOptions['sameSite']> {
+  const configuredValue = process.env.AUTH_COOKIE_SAME_SITE?.trim().toLowerCase();
+
+  if (configuredValue === 'lax' || configuredValue === 'strict' || configuredValue === 'none') {
+    return configuredValue;
+  }
+
+  return process.env.NODE_ENV === 'production'
+    ? DEFAULT_PROD_COOKIE_SAME_SITE
+    : DEFAULT_NON_PROD_COOKIE_SAME_SITE;
+}
+
+function getSessionCookieSecure(sameSite: NonNullable<CookieOptions['sameSite']>): boolean {
+  const configuredValue = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+
+  if (configuredValue === 'true') {
+    return true;
+  }
+
+  if (configuredValue === 'false') {
+    // Browsers reject SameSite=None cookies without Secure, so force a safe value.
+    return sameSite === 'none';
+  }
+
+  return process.env.NODE_ENV === 'production' || sameSite === 'none';
+}
+
 export function getSessionCookieOptions(): CookieOptions {
+  const sameSite = getSessionCookieSameSite();
+
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: getSessionCookieSecure(sameSite),
+    sameSite,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
