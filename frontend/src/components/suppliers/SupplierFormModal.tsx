@@ -24,6 +24,7 @@ export default function SupplierFormModal({
 }: SupplierFormModalProps) {
   const [formData, setFormData] = useState<SupplierFormData>({
     name: '',
+    serviceCategory: '',
     contactPerson: '',
     contactNumber: '',
     address: '',
@@ -39,6 +40,7 @@ export default function SupplierFormModal({
     const resetTimer = window.setTimeout(() => {
       setFormData({
         name: initialData?.name ?? '',
+        serviceCategory: initialData?.serviceCategory ?? '',
         contactPerson: initialData?.contactPerson ?? '',
         contactNumber: initialData?.contactNumber ?? '',
         address: initialData?.address ?? '',
@@ -96,6 +98,7 @@ export default function SupplierFormModal({
 
     onSubmit({
       name: formData.name.trim(),
+      serviceCategory: formData.serviceCategory.trim(),
       contactPerson: formData.contactPerson.trim(),
       contactNumber: formData.contactNumber.trim(),
       address: formData.address.trim(),
@@ -159,6 +162,18 @@ export default function SupplierFormModal({
 
           <input
             type="text"
+            name="serviceCategory"
+            placeholder="Service Category (e.g. Equipment, Nutrition)"
+            value={formData.serviceCategory}
+            onChange={(event) =>
+              setFormData((prev) => ({ ...prev, serviceCategory: event.target.value }))
+            }
+            disabled={isSubmitting}
+            className={inputClasses}
+          />
+
+          <input
+            type="text"
             name="contactPerson"
             placeholder="Contact Person"
             value={formData.contactPerson}
@@ -172,7 +187,7 @@ export default function SupplierFormModal({
           <input
             type="tel"
             name="contactNumber"
-            placeholder="Contact Number"
+            placeholder="Contact Number (e.g. 09171234567)"
             value={formData.contactNumber}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -181,7 +196,11 @@ export default function SupplierFormModal({
               }))
             }
             maxLength={11}
+            minLength={11}
+            pattern="[0-9]{11}"
+            title="Contact number must be exactly 11 digits (e.g. 09171234567)"
             disabled={isSubmitting}
+            required
             className={inputClasses}
           />
 
