@@ -187,7 +187,7 @@ export default function SupplierFormModal({
           <input
             type="tel"
             name="contactNumber"
-            placeholder="Contact Number"
+            placeholder="Contact Number (e.g. 09171234567)"
             value={formData.contactNumber}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -196,7 +196,11 @@ export default function SupplierFormModal({
               }))
             }
             maxLength={11}
+            minLength={11}
+            pattern="[0-9]{11}"
+            title="Contact number must be exactly 11 digits (e.g. 09171234567)"
             disabled={isSubmitting}
+            required
             className={inputClasses}
           />
 
