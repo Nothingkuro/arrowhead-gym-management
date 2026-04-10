@@ -29,7 +29,7 @@ function parseAllowedOrigins(value: string | undefined): Set<string> {
 const allowedOrigins = parseAllowedOrigins(process.env.FRONTEND_URL);
 
 function isAllowedFrontendOrigin(origin: string): boolean {
-	if (origin === frontendOrigin) {
+	if (allowedOrigins.has(origin)) {
 		return true;
 	}
 
@@ -46,11 +46,6 @@ app.use(
 	cors({
 		origin: (origin, callback) => {
 			if (!origin || isAllowedFrontendOrigin(origin)) {
-				callback(null, true);
-				return;
-			}
-
-			if (allowedOrigins.has(origin)) {
 				callback(null, true);
 				return;
 			}
