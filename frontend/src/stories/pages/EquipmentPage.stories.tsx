@@ -4,8 +4,8 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MemoryRouter } from 'react-router-dom';
 import EquipmentPage from '../../pages/EquipmentPage';
 import { EquipmentCondition } from '../../types/equipment';
-import { storyEquipment } from '../helpers/mockEquipment';
-import { setMockEquipmentStore } from '../../services/mockEquipmentStore';
+import { storyEquipment } from '../mocks/mockEquipment';
+import { setMockEquipmentStore } from '../mocks/mockEquipmentStore';
 
 const meta = {
   title: 'App/Pages/Equipment Status Page',
