@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { BarChart3 } from 'lucide-react';
 import {
   DailyRevenueSummaryCard,
   LowInventoryAlertList,
@@ -47,19 +46,11 @@ export default function ReportsPage() {
   return (
     <div className="relative min-h-full">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="rounded-xl border border-neutral-700 bg-secondary-light p-5 shadow-card text-text-light">
-          <div className="flex flex-wrap items-start gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-primary/20 text-primary-light">
-              <BarChart3 size={22} />
-            </span>
-            <div>
-              <h1 className="text-2xl font-semibold leading-tight sm:text-3xl">Reports and Analytics</h1>
-              <p className="mt-2 text-sm text-neutral-300">
-                Internal admin dashboard for revenue tracking and operational alerts.
-              </p>
-            </div>
-          </div>
-        </header>
+        <div className="flex items-center justify-center gap-3">
+          <h1 className="text-primary text-3xl sm:text-4xl font-semibold">
+            Reports and Analytics
+          </h1>
+        </div>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <DailyRevenueSummaryCard revenue={reportData.dailyRevenue} />
