@@ -21,7 +21,6 @@ export interface MembershipExpiryAlert {
 export interface InventoryAlert {
   id: string;
   itemName: string;
-  category: string;
   quantity: number;
   threshold: number;
 }

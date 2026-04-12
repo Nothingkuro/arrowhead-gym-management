@@ -56,6 +56,16 @@ export const AdminView: Story = {
     authRole: 'ADMIN' as StoryRole,
   },
   render: () => <ReportsPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const notificationsButton = canvas.getByLabelText('Notifications');
+
+    await userEvent.click(notificationsButton);
+
+    await waitFor(() => {
+      expect(notificationsButton).toHaveAttribute('aria-expanded', 'true');
+    });
+  },
 };
 
 export const AdminChangesMonthAndYear: Story = {

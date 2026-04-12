@@ -33,3 +33,10 @@ export const AllHealthyStock: Story = {
     alerts: storyInventoryAlertsHealthy,
   },
 };
+
+export const CustomThresholdThree: Story = {
+  args: {
+    alerts: storyInventoryAlerts,
+    threshold: 3,
+  },
+};
