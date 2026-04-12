@@ -11,14 +11,16 @@ export default function LowInventoryAlertList({
   alerts,
   threshold = 5,
 }: LowInventoryAlertListProps) {
+  const effectiveThreshold = alerts[0]?.threshold ?? threshold;
+
   const lowStockItems = alerts
-    .filter((alert) => alert.quantity < threshold)
+    .filter((alert) => alert.quantity < (alert.threshold ?? threshold))
     .sort((a, b) => a.quantity - b.quantity);
 
   return (
     <ReportSectionCard
       title="Low Inventory Alerts"
-      subtitle={`Equipment below threshold (${threshold} units)`}
+      subtitle={`Equipment below threshold (${effectiveThreshold} units)`}
       icon={<AlertTriangle size={20} />}
       iconClassName="bg-danger/20 text-danger"
     >

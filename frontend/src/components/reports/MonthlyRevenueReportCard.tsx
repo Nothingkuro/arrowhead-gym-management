@@ -39,7 +39,12 @@ export default function MonthlyRevenueReportCard({
   onMonthChange,
   onYearChange,
 }: MonthlyRevenueReportCardProps) {
-  const yearOptions = Array.from(new Set(records.map((record) => record.year))).sort((a, b) => b - a);
+  const currentYear = new Date().getFullYear();
+  const earliestYear = 2000;
+  const resolvedYearOptions = Array.from(
+    { length: currentYear - earliestYear + 1 },
+    (_, index) => currentYear - index,
+  );
 
   const selectedTotal =
     records.find((record) => record.month === selectedMonth && record.year === selectedYear)?.total ?? 0;
@@ -77,7 +82,7 @@ export default function MonthlyRevenueReportCard({
             onChange={(event) => onYearChange(Number(event.target.value))}
             className="rounded-lg border border-neutral-700 bg-secondary px-3 py-2 text-sm text-text-light focus:outline-none focus:ring-2 focus:ring-info/60"
           >
-            {yearOptions.map((year) => (
+            {resolvedYearOptions.map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>
