@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { jest, describe, expect, it } from '@jest/globals';
 
 jest.mock('../../../src/lib/prisma', () => ({
   __esModule: true,
@@ -139,6 +140,68 @@ describe('report controller (mocked)', () => {
     ]);
   });
 
+  it('falls back to default threshold when low inventory threshold is invalid', async () => {
+    mockedPrisma.equipment.findMany.mockResolvedValue([
+      { id: 'eq-1', itemName: 'Barbell', quantity: 2 },
+    ]);
+
+    const req = {
+      query: {
+        threshold: '-1',
+      },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await getLowInventoryAlerts(req, res);
+
+    expect(mockedPrisma.equipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          quantity: {
+            lt: 5,
+          },
+        },
+      }),
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith([
+      expect.objectContaining({
+        threshold: 5,
+      }),
+    ]);
+  });
+
+  it('caps low inventory threshold at 9999', async () => {
+    mockedPrisma.equipment.findMany.mockResolvedValue([
+      { id: 'eq-1', itemName: 'Barbell', quantity: 2 },
+    ]);
+
+    const req = {
+      query: {
+        threshold: '100000',
+      },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await getLowInventoryAlerts(req, res);
+
+    expect(mockedPrisma.equipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          quantity: {
+            lt: 9999,
+          },
+        },
+      }),
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith([
+      expect.objectContaining({
+        threshold: 9999,
+      }),
+    ]);
+  });
+
   it('returns reports overview payload shape', async () => {
     mockedPrisma.payment.findMany
       .mockResolvedValueOnce([
@@ -181,5 +244,73 @@ describe('report controller (mocked)', () => {
         inventoryAlerts: expect.any(Array),
       }),
     );
+  });
+
+  it('returns 500 when daily revenue summary query fails', async () => {
+    mockedPrisma.payment.findMany.mockRejectedValue(new Error('db failure'));
+
+    const req = {} as Request;
+    const res = createResponse();
+
+    await getDailyRevenueSummary(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch daily revenue summary' });
+  });
+
+  it('returns 500 when monthly revenue query fails', async () => {
+    mockedPrisma.payment.findMany.mockRejectedValue(new Error('db failure'));
+
+    const req = {} as Request;
+    const res = createResponse();
+
+    await getMonthlyRevenueRecords(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch monthly revenue records' });
+  });
+
+  it('returns 500 when upcoming expirations query fails', async () => {
+    mockedPrisma.member.findMany.mockRejectedValue(new Error('db failure'));
+
+    const req = {
+      query: {
+        days: '3',
+      },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await getUpcomingExpirations(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch upcoming expirations' });
+  });
+
+  it('returns 500 when low inventory query fails', async () => {
+    mockedPrisma.equipment.findMany.mockRejectedValue(new Error('db failure'));
+
+    const req = {
+      query: {
+        threshold: '5',
+      },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await getLowInventoryAlerts(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch low inventory alerts' });
+  });
+
+  it('returns 500 when reports overview query fails', async () => {
+    mockedPrisma.payment.findMany.mockRejectedValueOnce(new Error('db failure'));
+
+    const req = {} as Request;
+    const res = createResponse();
+
+    await getReportsOverview(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch reports overview' });
   });
 });

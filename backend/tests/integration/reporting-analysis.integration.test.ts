@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { Role } from '@prisma/client';
+import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import app from '../../src/app';
 import prisma, { disconnectPrisma } from '../../src/lib/prisma';
 import { hashPassword } from '../../src/utils/auth';
@@ -214,6 +215,13 @@ describe('Reporting and analysis API', () => {
     expect(response.body).toEqual({ error: 'Authentication required' });
   });
 
+  it('rejects unauthenticated access to daily revenue reports', async () => {
+    const response = await request(app).get('/api/reports/daily-revenue');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Authentication required' });
+  });
+
   it('allows staff to fetch upcoming expirations', async () => {
     const response = await request(app)
       .get('/api/reports/upcoming-expirations?days=3')
@@ -238,6 +246,37 @@ describe('Reporting and analysis API', () => {
     expect(response.body).toEqual({ error: 'Insufficient permissions' });
   });
 
+  it('rejects staff from daily revenue endpoint', async () => {
+    const response = await request(app)
+      .get('/api/reports/daily-revenue')
+      .set('Cookie', staffCookie);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Insufficient permissions' });
+  });
+
+  it('rejects staff from low inventory endpoint', async () => {
+    const response = await request(app)
+      .get('/api/reports/low-inventory')
+      .set('Cookie', staffCookie);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Insufficient permissions' });
+  });
+
+  it('returns low inventory alerts for admin', async () => {
+    const response = await request(app)
+      .get('/api/reports/low-inventory?threshold=5')
+      .set('Cookie', adminCookie);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+
+    const lowItem = response.body.find((item: { id: string }) => item.id === createdEquipmentIds[0]);
+    expect(lowItem).toBeDefined();
+    expect(lowItem.threshold).toBe(5);
+  });
+
   it('returns reporting overview for admin', async () => {
     const response = await request(app)
       .get('/api/reports/overview?threshold=5&days=3')
@@ -254,6 +293,44 @@ describe('Reporting and analysis API', () => {
     );
     expect(lowItem).toBeDefined();
     expect(lowItem.threshold).toBe(5);
+  });
+
+  it('falls back to default overview params for invalid values', async () => {
+    const response = await request(app)
+      .get('/api/reports/overview?threshold=-1&days=0')
+      .set('Cookie', adminCookie);
+
+    expect(response.status).toBe(200);
+
+    const lowItem = response.body.inventoryAlerts.find(
+      (item: { id: string }) => item.id === createdEquipmentIds[0],
+    );
+    expect(lowItem).toBeDefined();
+    expect(lowItem.threshold).toBe(5);
+
+    const farFound = response.body.membershipExpiryAlerts.find(
+      (member: { id: string }) => member.id === createdFarMemberId,
+    );
+    expect(farFound).toBeUndefined();
+  });
+
+  it('clamps overview params to maximum values', async () => {
+    const response = await request(app)
+      .get('/api/reports/overview?threshold=100000&days=100')
+      .set('Cookie', adminCookie);
+
+    expect(response.status).toBe(200);
+
+    const lowItem = response.body.inventoryAlerts.find(
+      (item: { id: string }) => item.id === createdEquipmentIds[0],
+    );
+    expect(lowItem).toBeDefined();
+    expect(lowItem.threshold).toBe(9999);
+
+    const farFound = response.body.membershipExpiryAlerts.find(
+      (member: { id: string }) => member.id === createdFarMemberId,
+    );
+    expect(farFound).toBeDefined();
   });
 
   it('returns monthly revenue records for admin', async () => {
