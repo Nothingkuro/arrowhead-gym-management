@@ -196,9 +196,8 @@ export default function SupplierFormModal({
               }))
             }
             maxLength={11}
-            minLength={11}
-            pattern="[0-9]{11}"
-            title="Contact number must be exactly 11 digits (e.g. 09171234567)"
+            pattern="[0-9]{1,11}"
+            title="Contact number must be up to 11 digits (e.g. 09171234567)"
             disabled={isSubmitting}
             required
             className={inputClasses}
