@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MemoryRouter } from 'react-router-dom';
 import MembershipPlansPage from '../../pages/MembershipPlansPage';
+import { storyMembershipPlanConfigPlans } from '../mocks/mockMembershipPlanConfig';
 
 const meta = {
   title: 'App/Pages/Membership Plans Page',
@@ -18,7 +19,7 @@ function MembershipPlansPageCanvas() {
   return (
     <MemoryRouter initialEntries={['/dashboard/membership-plans']}>
       <div className="min-h-screen bg-surface-alt p-4 sm:p-6 lg:p-8">
-        <MembershipPlansPage />
+        <MembershipPlansPage plans={storyMembershipPlanConfigPlans} />
       </div>
     </MemoryRouter>
   );

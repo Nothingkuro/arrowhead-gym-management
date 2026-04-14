@@ -1,119 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { MembershipPlan, MembershipPlanFormData } from '../types/membershipPlan';
 import MembershipPlanTable from '../components/membership-plans/MembershipPlanTable';
 import MembershipPlanModal from '../components/membership-plans/MembershipPlanModal';
 import DeleteConfirmModal from '../components/membership-plans/DeleteConfirmModal';
+import {
+  createMembershipPlan,
+  deleteMembershipPlan,
+  listMembershipPlans,
+  updateMembershipPlan,
+} from '../services/membershipPlanApi';
 
-/* ── Mock data ── */
-const MOCK_PLANS: MembershipPlan[] = [
-  {
-    id: '1',
-    name: 'Monthly Pass',
-    description: 'Standard monthly gym access',
-    durationDays: 30,
-    price: 1000,
-    isActive: true,
-    createdAt: '2026-01-15T08:00:00Z',
-    updatedAt: '2026-01-15T08:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'Quarterly Pass',
-    description: '3-month gym access at a discounted rate',
-    durationDays: 90,
-    price: 2500,
-    isActive: true,
-    createdAt: '2026-01-15T08:00:00Z',
-    updatedAt: '2026-01-15T08:00:00Z',
-  },
-  {
-    id: '3',
-    name: '6-Month VIP',
-    description: 'Half-year VIP membership with locker access',
-    durationDays: 180,
-    price: 4500,
-    isActive: true,
-    createdAt: '2026-02-01T08:00:00Z',
-    updatedAt: '2026-02-01T08:00:00Z',
-  },
-  {
-    id: '4',
-    name: 'Annual Pass',
-    description: 'Full-year unlimited gym access — best value',
-    durationDays: 365,
-    price: 10000,
-    isActive: true,
-    createdAt: '2026-01-15T08:00:00Z',
-    updatedAt: '2026-01-15T08:00:00Z',
-  },
-  {
-    id: '5',
-    name: 'Day Pass',
-    description: 'Single day walk-in access',
-    durationDays: 1,
-    price: 100,
-    isActive: false,
-    createdAt: '2026-01-10T08:00:00Z',
-    updatedAt: '2026-03-20T08:00:00Z',
-  },
-  {
-    id: '6',
-    name: 'Day Pass',
-    description: 'Single day walk-in access',
-    durationDays: 1,
-    price: 100,
-    isActive: false,
-    createdAt: '2026-01-10T08:00:00Z',
-    updatedAt: '2026-03-20T08:00:00Z',
-  },
-  {
-    id: '7',
-    name: 'Day Pass',
-    description: 'Single day walk-in access',
-    durationDays: 1,
-    price: 100,
-    isActive: false,
-    createdAt: '2026-01-10T08:00:00Z',
-    updatedAt: '2026-03-20T08:00:00Z',
-  },
-  {
-    id: '8',
-    name: 'Day Pass',
-    description: 'Single day walk-in access',
-    durationDays: 1,
-    price: 100,
-    isActive: false,
-    createdAt: '2026-01-10T08:00:00Z',
-    updatedAt: '2026-03-20T08:00:00Z',
-  },
-  {
-    id: '9',
-    name: 'Day Pass',
-    description: 'Single day walk-in access',
-    durationDays: 1,
-    price: 100,
-    isActive: false,
-    createdAt: '2026-01-10T08:00:00Z',
-    updatedAt: '2026-03-20T08:00:00Z',
-  },
-  {
-    id: '10',
-    name: 'Day Pass',
-    description: 'Single day walk-in access',
-    durationDays: 1,
-    price: 100,
-    isActive: false,
-    createdAt: '2026-01-10T08:00:00Z',
-    updatedAt: '2026-03-20T08:00:00Z',
-  },
+interface MembershipPlansPageProps {
+  plans?: MembershipPlan[];
+  initialLoading?: boolean;
+}
 
-];
-
-let nextId = 6;
-
-export default function MembershipPlansPage() {
-  const [plans, setPlans] = useState<MembershipPlan[]>(MOCK_PLANS);
+export default function MembershipPlansPage({
+  plans: providedPlans,
+  initialLoading = false,
+}: MembershipPlansPageProps) {
+  const [plans, setPlans] = useState<MembershipPlan[]>(providedPlans ?? []);
+  const [isLoading, setIsLoading] = useState(initialLoading);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   /* ── Modal state ── */
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,6 +33,54 @@ export default function MembershipPlansPage() {
   /* ── Delete confirmation state ── */
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<MembershipPlan | null>(null);
+
+  const isLocalMode = providedPlans !== undefined;
+
+  useEffect(() => {
+    if (!providedPlans) {
+      return;
+    }
+
+    setPlans(providedPlans);
+    setIsLoading(false);
+    setPageError(null);
+  }, [providedPlans]);
+
+  useEffect(() => {
+    if (isLocalMode) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPlans = async () => {
+      try {
+        setIsLoading(true);
+        setPageError(null);
+
+        const fetchedPlans = await listMembershipPlans(true);
+
+        if (!cancelled) {
+          setPlans(fetchedPlans);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Failed to load membership plans';
+          setPageError(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadPlans();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLocalMode]);
 
   /* ── Handlers ── */
   const handleOpenAdd = () => {
@@ -145,40 +102,62 @@ export default function MembershipPlansPage() {
     setModalError(null);
   };
 
-  const handleSubmit = (data: MembershipPlanFormData) => {
-    const now = new Date().toISOString();
+  const handleSubmit = async (data: MembershipPlanFormData) => {
+    try {
+      setModalError(null);
+      setPageError(null);
 
-    if (modalMode === 'add') {
-      const newPlan: MembershipPlan = {
-        id: String(nextId++),
-        name: data.name,
-        description: data.description || null,
-        durationDays: data.durationDays,
-        price: data.price,
-        isActive: data.isActive,
-        createdAt: now,
-        updatedAt: now,
-      };
-      setPlans((prev) => [...prev, newPlan]);
-    } else if (activePlan) {
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === activePlan.id
-            ? {
-              ...p,
-              name: data.name,
-              description: data.description || null,
-              durationDays: data.durationDays,
-              price: data.price,
-              isActive: data.isActive,
-              updatedAt: now,
-            }
-            : p,
-        ),
-      );
+      if (isLocalMode) {
+        const now = new Date().toISOString();
+
+        if (modalMode === 'add') {
+          const localPlan: MembershipPlan = {
+            id: `story-${Date.now()}`,
+            name: data.name,
+            description: data.description || null,
+            durationDays: data.durationDays,
+            price: data.price,
+            isActive: data.isActive,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          setPlans((prev) => [...prev, localPlan]);
+        } else if (activePlan) {
+          setPlans((prev) =>
+            prev.map((plan) =>
+              plan.id === activePlan.id
+                ? {
+                    ...plan,
+                    name: data.name,
+                    description: data.description || null,
+                    durationDays: data.durationDays,
+                    price: data.price,
+                    isActive: data.isActive,
+                    updatedAt: now,
+                  }
+                : plan,
+            ),
+          );
+        }
+
+        setIsModalOpen(false);
+        return;
+      }
+
+      if (modalMode === 'add') {
+        const createdPlan = await createMembershipPlan(data);
+        setPlans((prev) => [...prev, createdPlan]);
+      } else if (activePlan) {
+        const updatedPlan = await updateMembershipPlan(activePlan.id, data);
+        setPlans((prev) => prev.map((plan) => (plan.id === updatedPlan.id ? updatedPlan : plan)));
+      }
+
+      setIsModalOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save membership plan';
+      setModalError(message);
     }
-
-    setIsModalOpen(false);
   };
 
   const handleRequestDelete = (plan: MembershipPlan) => {
@@ -186,12 +165,27 @@ export default function MembershipPlansPage() {
     setIsDeleteOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    if (planToDelete) {
-      setPlans((prev) => prev.filter((p) => p.id !== planToDelete.id));
+  const handleConfirmDelete = async () => {
+    if (!planToDelete) {
+      return;
     }
-    setIsDeleteOpen(false);
-    setPlanToDelete(null);
+
+    try {
+      setPageError(null);
+
+      if (!isLocalMode) {
+        await deleteMembershipPlan(planToDelete.id);
+      }
+
+      setPlans((prev) => prev.filter((plan) => plan.id !== planToDelete.id));
+      setIsDeleteOpen(false);
+      setPlanToDelete(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete membership plan';
+      setPageError(message);
+      setIsDeleteOpen(false);
+      setPlanToDelete(null);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -238,6 +232,16 @@ export default function MembershipPlansPage() {
 
       {/* ── Table ── */}
       <div className="mx-auto w-full max-w-5xl flex-1 min-h-0">
+        {isLoading && (
+          <div className="mb-3 text-sm text-neutral-500">Loading membership plans...</div>
+        )}
+
+        {pageError && (
+          <div className="mb-3 rounded-md border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger">
+            {pageError}
+          </div>
+        )}
+
         <MembershipPlanTable
           plans={plans}
           onEdit={handleOpenEdit}
@@ -249,10 +253,12 @@ export default function MembershipPlansPage() {
       <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-20">
         <button
           onClick={handleOpenAdd}
+          disabled={isLoading}
           className="
             flex items-center gap-2 px-5 py-3 bg-primary text-text-light
             rounded-full shadow-lg shadow-primary/30
             hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/40
+            disabled:opacity-60 disabled:cursor-not-allowed
             active:scale-95 transition-all duration-200 cursor-pointer
             text-sm font-semibold
           "
