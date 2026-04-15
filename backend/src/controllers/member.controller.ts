@@ -48,6 +48,21 @@ function toMemberListItem(member: {
 
 export const getMembers = async (req: Request, res: Response): Promise<void> => {
   try {
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    await prisma.member.updateMany({
+      where: {
+        status: MemberStatus.ACTIVE,
+        expiryDate: {
+          lte: todayEnd,
+        },
+      },
+      data: {
+        status: MemberStatus.EXPIRED,
+      },
+    });
+
     const searchRaw = typeof req.query.search === 'string' ? req.query.search : '';
     const statusRaw = typeof req.query.status === 'string' ? req.query.status : 'ALL';
     const pageRaw = typeof req.query.page === 'string' ? Number(req.query.page) : 1;
@@ -61,8 +76,8 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
 
     const status =
       statusRaw === MemberStatus.ACTIVE ||
-      statusRaw === MemberStatus.INACTIVE ||
-      statusRaw === MemberStatus.EXPIRED
+        statusRaw === MemberStatus.INACTIVE ||
+        statusRaw === MemberStatus.EXPIRED
         ? statusRaw
         : null;
 
@@ -70,13 +85,13 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
       ...(status ? { status } : {}),
       ...(search
         ? {
-            OR: [
-              { id: { contains: search, mode: 'insensitive' } },
-              { firstName: { contains: search, mode: 'insensitive' } },
-              { lastName: { contains: search, mode: 'insensitive' } },
-              { contactNumber: { contains: search, mode: 'insensitive' } },
-            ],
-          }
+          OR: [
+            { id: { contains: search, mode: 'insensitive' } },
+            { firstName: { contains: search, mode: 'insensitive' } },
+            { lastName: { contains: search, mode: 'insensitive' } },
+            { contactNumber: { contains: search, mode: 'insensitive' } },
+          ],
+        }
         : {}),
     };
 

@@ -41,6 +41,15 @@ type ApiMembersResponse = {
 };
 
 function normalizeMember(apiMember: ApiMember): Member {
+  let computedStatus = apiMember.status;
+  if (computedStatus === 'ACTIVE' && apiMember.expiryDate) {
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    if (new Date(apiMember.expiryDate) <= todayEnd) {
+      computedStatus = 'EXPIRED';
+    }
+  }
+
   return {
     id: apiMember.id,
     firstName: apiMember.firstName,
@@ -48,7 +57,7 @@ function normalizeMember(apiMember: ApiMember): Member {
     contactNumber: apiMember.contactNumber,
     joinDate: apiMember.joinDate,
     expiryDate: apiMember.expiryDate || '',
-    status: apiMember.status,
+    status: computedStatus,
     notes: apiMember.notes ?? '',
   };
 }
