@@ -148,6 +148,19 @@ describe('Membership plan management API', () => {
     expect(response.body).toEqual({ error: 'A membership plan with this name already exists.' });
   });
 
+  it('rejects creating plan with invalid data', async () => {
+    const response = await request(app)
+      .post('/api/membership-plans')
+      .set('Cookie', adminCookie)
+      .send({
+        name: ' ',
+        durationDays: 0,
+        price: -10,
+      });
+
+    expect(response.status).toBe(400);
+  });
+
   it('updates membership plan as admin', async () => {
     expect(createdPlanId).toBeTruthy();
 
@@ -184,6 +197,30 @@ describe('Membership plan management API', () => {
     expect(response.body).toEqual({ error: 'Insufficient permissions' });
   });
 
+  it('rejects updating missing plan', async () => {
+    const response = await request(app)
+      .put('/api/membership-plans/invalid-id-that-does-not-exist')
+      .set('Cookie', adminCookie)
+      .send({
+        name: 'Updated Name',
+      });
+
+    expect(response.status).toBe(404);
+  });
+
+  it('rejects updating plan with invalid data', async () => {
+    expect(createdPlanId).toBeTruthy();
+
+    const response = await request(app)
+      .put(`/api/membership-plans/${createdPlanId}`)
+      .set('Cookie', adminCookie)
+      .send({
+        durationDays: -5,
+      });
+
+    expect(response.status).toBe(400);
+  });
+
   it('filters archived plans when includeArchived=false', async () => {
     expect(createdPlanId).toBeTruthy();
 
@@ -207,6 +244,14 @@ describe('Membership plan management API', () => {
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ error: 'Insufficient permissions' });
+  });
+
+  it('rejects deleting missing plan', async () => {
+    const response = await request(app)
+      .delete('/api/membership-plans/invalid-id-that-does-not-exist')
+      .set('Cookie', adminCookie);
+
+    expect(response.status).toBe(404);
   });
 
   it('deletes membership plan as admin', async () => {

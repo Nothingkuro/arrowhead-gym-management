@@ -100,6 +100,18 @@ describe('membership plan controller (mocked)', () => {
     });
   });
 
+  it('returns 500 when fetching membership plans fails', async () => {
+    mockPrisma.membershipPlan.findMany.mockRejectedValue(new Error('DB Error'));
+
+    const req = { query: {} } as unknown as Request;
+    const res = createResponse();
+
+    await getMembershipPlans(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch membership plans' });
+  });
+
   it('creates membership plan', async () => {
     const now = new Date('2026-04-10T01:00:00.000Z');
 
@@ -186,6 +198,24 @@ describe('membership plan controller (mocked)', () => {
     });
   });
 
+  it('returns 500 when creating membership plan fails', async () => {
+    mockPrisma.membershipPlan.findFirst.mockRejectedValue(new Error('DB Error'));
+
+    const req = {
+      body: {
+        name: 'Pass',
+        durationDays: 30,
+        price: 1000,
+      },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await createMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to create membership plan' });
+  });
+
   it('updates membership plan', async () => {
     const now = new Date('2026-04-10T02:00:00.000Z');
 
@@ -259,6 +289,95 @@ describe('membership plan controller (mocked)', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'isActive must be a boolean value' });
   });
 
+  it('returns 400 when updating with empty name', async () => {
+    mockPrisma.membershipPlan.findUnique.mockResolvedValue({ id: 'plan-1' });
+
+    const req = {
+      params: { planId: 'plan-1' },
+      body: { name: '  ' },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await updateMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Plan name must be a non-empty string' });
+  });
+
+  it('returns 409 when updating to duplicate name', async () => {
+    mockPrisma.membershipPlan.findUnique.mockResolvedValue({ id: 'plan-1' });
+    mockPrisma.membershipPlan.findFirst.mockResolvedValue({ id: 'plan-duplicate' });
+
+    const req = {
+      params: { planId: 'plan-1' },
+      body: { name: 'Existing Name' },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await updateMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ error: 'A membership plan with this name already exists.' });
+  });
+
+  it('returns 400 when updating with invalid durationDays', async () => {
+    mockPrisma.membershipPlan.findUnique.mockResolvedValue({ id: 'plan-1' });
+
+    const req = {
+      params: { planId: 'plan-1' },
+      body: { durationDays: 0 },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await updateMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Duration must be a whole number >= 1' });
+  });
+
+  it('returns 400 when updating with invalid price', async () => {
+    mockPrisma.membershipPlan.findUnique.mockResolvedValue({ id: 'plan-1' });
+
+    const req = {
+      params: { planId: 'plan-1' },
+      body: { price: -50 },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await updateMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Price must be a number >= 0' });
+  });
+
+  it('returns 400 when updating with missing planId', async () => {
+    const req = {
+      params: { },
+      body: { name: 'Something' },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await updateMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Plan id is required' });
+  });
+
+  it('returns 500 when updating membership plan fails', async () => {
+    mockPrisma.membershipPlan.findUnique.mockRejectedValue(new Error('DB Error'));
+
+    const req = {
+      params: { planId: 'plan-1' },
+      body: { name: 'Any Name' },
+    } as unknown as Request;
+    const res = createResponse();
+
+    await updateMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to update membership plan' });
+  });
+
   it('deletes membership plan', async () => {
     mockPrisma.membershipPlan.findUnique.mockResolvedValue({ id: 'plan-1' });
     mockPrisma.membershipPlan.delete.mockResolvedValue({ id: 'plan-1' });
@@ -283,5 +402,47 @@ describe('membership plan controller (mocked)', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: 'Membership plan not found' });
+  });
+
+  it('returns 400 when deleting with missing planId', async () => {
+    const req = { params: { } } as unknown as Request;
+    const res = createResponse();
+
+    await deleteMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Plan id is required' });
+  });
+
+  it('returns 409 when deleting plan referenced by payment records', async () => {
+    mockPrisma.membershipPlan.findUnique.mockResolvedValue({ id: 'plan-1' });
+    
+    // We need to simulate PrismaClientKnownRequestError
+    const { Prisma } = require('@prisma/client');
+    const prismaError = new Prisma.PrismaClientKnownRequestError('Foreign key constraint failed', {
+      code: 'P2003',
+      clientVersion: 'x',
+    });
+    mockPrisma.membershipPlan.delete.mockRejectedValue(prismaError);
+
+    const req = { params: { planId: 'plan-1' } } as unknown as Request;
+    const res = createResponse();
+
+    await deleteMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ error: 'This plan cannot be deleted because it is already referenced by payment records.' });
+  });
+
+  it('returns 500 when deleting membership plan fails', async () => {
+    mockPrisma.membershipPlan.findUnique.mockRejectedValue(new Error('DB Error'));
+
+    const req = { params: { planId: 'plan-1' } } as unknown as Request;
+    const res = createResponse();
+
+    await deleteMembershipPlan(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to delete membership plan' });
   });
 });
