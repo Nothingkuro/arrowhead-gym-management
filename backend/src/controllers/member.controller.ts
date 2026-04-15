@@ -25,11 +25,16 @@ function normalizeContactNumber(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+function normalizeNotes(value: string): string {
+  return value.trim();
+}
+
 function toMemberListItem(member: {
   id: string;
   firstName: string;
   lastName: string;
   contactNumber: string;
+  notes: string;
   joinDate: Date;
   expiryDate: Date | null;
   status: 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
@@ -42,7 +47,7 @@ function toMemberListItem(member: {
     joinDate: member.joinDate.toISOString(),
     expiryDate: member.expiryDate ? member.expiryDate.toISOString() : '',
     status: member.status,
-    notes: '',
+    notes: member.notes,
   };
 }
 
@@ -107,6 +112,7 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
           firstName: true,
           lastName: true,
           contactNumber: true,
+          notes: true,
           joinDate: true,
           expiryDate: true,
           status: true,
@@ -133,14 +139,21 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
   try {
     const rawFullName = req.body?.fullName;
     const rawContactNumber = req.body?.contactNumber;
+    const rawNotes = req.body?.notes;
 
     if (typeof rawFullName !== 'string' || typeof rawContactNumber !== 'string') {
       res.status(400).json({ error: 'Full name and contact number are required' });
       return;
     }
 
+    if (rawNotes !== undefined && typeof rawNotes !== 'string') {
+      res.status(400).json({ error: 'Notes must be a string' });
+      return;
+    }
+
     const fullName = normalizeFullName(rawFullName);
     const contactNumber = normalizeContactNumber(rawContactNumber);
+    const notes = typeof rawNotes === 'string' ? normalizeNotes(rawNotes) : '';
 
     if (!fullName || !contactNumber) {
       res.status(400).json({ error: 'Full name and contact number are required' });
@@ -164,6 +177,7 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
         firstName,
         lastName: lastNameParts.join(' '),
         contactNumber,
+        notes,
         // joinDate is set to current timestamp by default in schema.
         status: 'ACTIVE',
       },
@@ -172,6 +186,7 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
         firstName: true,
         lastName: true,
         contactNumber: true,
+        notes: true,
         joinDate: true,
         expiryDate: true,
         status: true,
@@ -197,6 +212,7 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
     const rawFirstName = req.body?.firstName;
     const rawLastName = req.body?.lastName;
     const rawContactNumber = req.body?.contactNumber;
+    const rawNotes = req.body?.notes;
 
     if (!memberId) {
       res.status(400).json({ error: 'Member id is required' });
@@ -212,9 +228,15 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    if (rawNotes !== undefined && typeof rawNotes !== 'string') {
+      res.status(400).json({ error: 'Notes must be a string' });
+      return;
+    }
+
     const firstName = normalizeNamePart(rawFirstName);
     const lastName = normalizeNamePart(rawLastName);
     const contactNumber = normalizeContactNumber(rawContactNumber);
+    const notes = typeof rawNotes === 'string' ? normalizeNotes(rawNotes) : undefined;
     const fullName = normalizeFullName(`${firstName} ${lastName}`);
 
     if (!fullName || !contactNumber) {
@@ -243,12 +265,14 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
         firstName,
         lastName,
         contactNumber,
+        ...(notes !== undefined ? { notes } : {}),
       },
       select: {
         id: true,
         firstName: true,
         lastName: true,
         contactNumber: true,
+        notes: true,
         joinDate: true,
         expiryDate: true,
         status: true,
@@ -298,6 +322,7 @@ export const deactivateMember = async (req: Request, res: Response): Promise<voi
         firstName: true,
         lastName: true,
         contactNumber: true,
+        notes: true,
         joinDate: true,
         expiryDate: true,
         status: true,

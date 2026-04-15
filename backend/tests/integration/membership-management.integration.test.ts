@@ -105,20 +105,23 @@ describe('Membership management API', () => {
 
   it('creates a member with authenticated request', async () => {
     originalContactNumber = `0917${Math.floor(1000000 + Math.random() * 8999999)}`;
+    const notes = 'Prefers morning sessions';
 
     const response = await request(app)
       .post('/api/members')
       .set('Cookie', authCookie)
       .send({
-      fullName: 'Test Member',
-      contactNumber: originalContactNumber,
-    });
+        fullName: 'Test Member',
+        contactNumber: originalContactNumber,
+        notes,
+      });
 
     expect(response.status).toBe(201);
     expect(response.body.firstName).toBe('Test');
     expect(response.body.lastName).toBe('Member');
     expect(response.body.contactNumber).toBe(originalContactNumber);
     expect(response.body.status).toBe('ACTIVE');
+    expect(response.body.notes).toBe(notes);
 
     createdMemberId = response.body.id;
     expect(typeof createdMemberId).toBe('string');
@@ -154,20 +157,23 @@ describe('Membership management API', () => {
     expect(createdMemberId).toBeTruthy();
 
     updatedContactNumber = `0928${Math.floor(1000000 + Math.random() * 8999999)}`;
+    const updatedNotes = 'Updated note from integration test';
 
     const response = await request(app)
       .patch(`/api/members/${createdMemberId}`)
       .set('Cookie', authCookie)
       .send({
-      firstName: 'Updated',
-      lastName: 'Member',
-      contactNumber: updatedContactNumber,
-    });
+        firstName: 'Updated',
+        lastName: 'Member',
+        contactNumber: updatedContactNumber,
+        notes: updatedNotes,
+      });
 
     expect(response.status).toBe(200);
     expect(response.body.firstName).toBe('Updated');
     expect(response.body.lastName).toBe('Member');
     expect(response.body.contactNumber).toBe(updatedContactNumber);
+    expect(response.body.notes).toBe(updatedNotes);
   });
 
   it('rejects update when required fields are missing', async () => {

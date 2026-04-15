@@ -44,7 +44,7 @@ const adminAdditionalNavItems: NavItem[] = [
   { label: 'Suppliers', icon: <Truck size={20} />, to: '/dashboard/suppliers' },
   { label: 'Reports', icon: <BarChart3 size={20} />, to: '/dashboard/reports' },
   { label: 'Assets Inventory', icon: <Database size={20} />, to: '/dashboard/manage-assets' },
-  { label: 'Staff', icon: <UserCog size={20} />, to: '/dashboard/staff' },
+  { label: 'Profile', icon: <UserCog size={20} />, to: '/dashboard/profile' },
 ];
 
 export default function Sidebar({

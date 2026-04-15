@@ -5,10 +5,12 @@ import MemberFormModal, { type MemberFormData } from '../components/members/AddM
 import ActionGroup from '../components/common/ActionGroup';
 import ProfileInfoRow from '../components/members/ProfileInfoRow';
 import StatusBadge from '../components/members/StatusBadge';
+import MemberAttendanceHistoryPanel from '../components/members/attendance/MemberAttendanceHistoryPanel';
 import MemberPaymentHistoryPanel from '../components/members/payment-history/MemberPaymentHistoryPanel';
 import { getAuthHeaders } from '../services/authHeaders';
 import { API_BASE_URL } from '../services/apiBaseUrl';
 import type { Member, MemberStatus } from '../types/member';
+import type { Attendance } from '../types/attendance';
 
 type ApiMember = {
   id: string;
@@ -66,6 +68,23 @@ function normalizeContactInput(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+function createMockAttendanceRecords(memberRecordId: string): Attendance[] {
+  const now = Date.now();
+
+  return [
+    {
+      id: `mock-attendance-${memberRecordId}-1`,
+      checkInTime: new Date(now - 1000 * 60 * 60 * 26).toISOString(),
+      memberId: memberRecordId,
+    },
+    {
+      id: `mock-attendance-${memberRecordId}-2`,
+      checkInTime: new Date(now - 1000 * 60 * 60 * 5).toISOString(),
+      memberId: memberRecordId,
+    },
+  ];
+}
+
 /** Side tab options */
 type SideTab = 'payment' | 'attendance';
 
@@ -115,6 +134,8 @@ export default function MemberProfilePage({
   const [editError, setEditError] = useState<string | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<Attendance[]>([]);
+  const [checkInMessage, setCheckInMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveSideTab(initialSideTab ?? null);
@@ -194,6 +215,31 @@ export default function MemberProfilePage({
 
   const member = editableMember ?? sourceMember;
 
+  useEffect(() => {
+    if (!member?.id) {
+      setAttendanceHistory([]);
+      setCheckInMessage(null);
+      return;
+    }
+
+    setAttendanceHistory(createMockAttendanceRecords(member.id));
+    setCheckInMessage(null);
+  }, [member?.id]);
+
+  useEffect(() => {
+    if (!checkInMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCheckInMessage(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [checkInMessage]);
+
   /* ── Local state so we can toggle status ── */
   const [memberStatus, setMemberStatus] = useState<MemberStatus>(
     initialStatus ?? 'INACTIVE',
@@ -259,8 +305,20 @@ export default function MemberProfilePage({
 
   /* ── Action handlers ── */
   const handleCheckIn = () => {
-    // TODO: call backend check-in endpoint
-    console.log('Checked in:', member.id);
+    if (!canCheckIn) {
+      return;
+    }
+
+    const mockAttendance: Attendance = {
+      id: `mock-attendance-${member.id}-${Date.now()}`,
+      checkInTime: new Date().toISOString(),
+      memberId: member.id,
+    };
+
+    setAttendanceHistory((currentRecords) => [mockAttendance, ...currentRecords]);
+    setCheckInMessage('Mock check-in recorded locally.');
+    setActiveSideTab('attendance');
+    console.log('Mock check-in added:', mockAttendance);
   };
 
   const handleDeactivate = async () => {
@@ -388,6 +446,7 @@ export default function MemberProfilePage({
           firstName: normalizedFirstName,
           lastName: normalizedLastName,
           contactNumber: normalizedContactNumber,
+          notes: normalizedNotes,
         }),
       });
 
@@ -443,6 +502,11 @@ export default function MemberProfilePage({
         <div className="max-w-3xl w-full mx-auto flex items-start justify-center pr-4 md:pr-12">
           {activeSideTab === 'payment' ? (
             <MemberPaymentHistoryPanel memberId={member.id} />
+          ) : activeSideTab === 'attendance' ? (
+            <MemberAttendanceHistoryPanel
+              memberId={member.id}
+              attendances={attendanceHistory}
+            />
           ) : (
             /* ── Profile Card ── */
             <div
@@ -509,6 +573,10 @@ export default function MemberProfilePage({
 
               {deactivateError && (
                 <p className="mt-3 text-center text-sm text-red-600">{deactivateError}</p>
+              )}
+
+              {checkInMessage && (
+                <p className="mt-3 text-center text-sm text-green-700">{checkInMessage}</p>
               )}
             </div>
           )}
