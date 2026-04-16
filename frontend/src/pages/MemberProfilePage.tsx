@@ -5,10 +5,12 @@ import MemberFormModal, { type MemberFormData } from '../components/members/AddM
 import ActionGroup from '../components/common/ActionGroup';
 import ProfileInfoRow from '../components/members/ProfileInfoRow';
 import StatusBadge from '../components/members/StatusBadge';
+import MemberAttendanceHistoryPanel from '../components/members/attendance/MemberAttendanceHistoryPanel';
 import MemberPaymentHistoryPanel from '../components/members/payment-history/MemberPaymentHistoryPanel';
 import { getAuthHeaders } from '../services/authHeaders';
 import { API_BASE_URL } from '../services/apiBaseUrl';
 import type { Member, MemberStatus } from '../types/member';
+import type { Attendance } from '../types/attendance';
 
 type ApiMember = {
   id: string;
@@ -25,6 +27,16 @@ type ApiMembersResponse = {
   items: ApiMember[];
 };
 
+type ApiAttendance = {
+  id: string;
+  memberId: string;
+  checkInTime: string;
+};
+
+type ApiAttendancesResponse = {
+  items: ApiAttendance[];
+};
+
 function normalizeMember(apiMember: ApiMember): Member {
   return {
     id: apiMember.id,
@@ -35,6 +47,14 @@ function normalizeMember(apiMember: ApiMember): Member {
     expiryDate: apiMember.expiryDate || '',
     status: apiMember.status,
     notes: apiMember.notes ?? '',
+  };
+}
+
+function normalizeAttendanceRecord(apiAttendance: ApiAttendance): Attendance {
+  return {
+    id: apiAttendance.id,
+    memberId: apiAttendance.memberId,
+    checkInTime: apiAttendance.checkInTime,
   };
 }
 
@@ -64,6 +84,23 @@ function normalizeNameInput(value: string): string {
 
 function normalizeContactInput(value: string): string {
   return value.replace(/\D/g, '');
+}
+
+function createMockAttendanceRecords(memberRecordId: string): Attendance[] {
+  const now = Date.now();
+
+  return [
+    {
+      id: `mock-attendance-${memberRecordId}-1`,
+      checkInTime: new Date(now - 1000 * 60 * 60 * 26).toISOString(),
+      memberId: memberRecordId,
+    },
+    {
+      id: `mock-attendance-${memberRecordId}-2`,
+      checkInTime: new Date(now - 1000 * 60 * 60 * 5).toISOString(),
+      memberId: memberRecordId,
+    },
+  ];
 }
 
 /** Side tab options */
@@ -115,6 +152,11 @@ export default function MemberProfilePage({
   const [editError, setEditError] = useState<string | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<Attendance[]>([]);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [checkInMessage, setCheckInMessage] = useState<string | null>(null);
+  const [checkInMessageTone, setCheckInMessageTone] = useState<'success' | 'error' | null>(null);
+  const isLocalMode = Boolean(members);
 
   useEffect(() => {
     setActiveSideTab(initialSideTab ?? null);
@@ -194,6 +236,80 @@ export default function MemberProfilePage({
 
   const member = editableMember ?? sourceMember;
 
+  useEffect(() => {
+    if (!member?.id) {
+      setAttendanceHistory([]);
+      setCheckInMessage(null);
+      setCheckInMessageTone(null);
+      return;
+    }
+
+    if (isLocalMode) {
+      setAttendanceHistory(createMockAttendanceRecords(member.id));
+      setCheckInMessage(null);
+      setCheckInMessageTone(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadAttendanceHistory = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/members/${member.id}/attendance`, {
+          method: 'GET',
+          headers: {
+            ...getAuthHeaders(),
+          },
+          credentials: 'include',
+          signal: controller.signal,
+        });
+
+        const responseBody = (await parseApiResponse(response)) as ApiAttendancesResponse | { error?: string };
+
+        if (!response.ok) {
+          const message = 'error' in responseBody && typeof responseBody.error === 'string'
+            ? responseBody.error
+            : 'Failed to load attendance history';
+          throw new Error(message);
+        }
+
+        const records = Array.isArray((responseBody as ApiAttendancesResponse).items)
+          ? (responseBody as ApiAttendancesResponse).items.map(normalizeAttendanceRecord)
+          : [];
+
+        setAttendanceHistory(records);
+      } catch (error: unknown) {
+        if ((error as { name?: string })?.name === 'AbortError') {
+          return;
+        }
+
+        console.error('Failed to load attendance history:', error);
+        setAttendanceHistory([]);
+      }
+    };
+
+    void loadAttendanceHistory();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isLocalMode, member?.id]);
+
+  useEffect(() => {
+    if (!checkInMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCheckInMessage(null);
+      setCheckInMessageTone(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [checkInMessage]);
+
   /* ── Local state so we can toggle status ── */
   const [memberStatus, setMemberStatus] = useState<MemberStatus>(
     initialStatus ?? 'INACTIVE',
@@ -258,9 +374,59 @@ export default function MemberProfilePage({
   const fullName = `${member.firstName} ${member.lastName}`;
 
   /* ── Action handlers ── */
-  const handleCheckIn = () => {
-    // TODO: call backend check-in endpoint
-    console.log('Checked in:', member.id);
+  const handleCheckIn = async () => {
+    if (!canCheckIn || isCheckingIn) {
+      return;
+    }
+
+    if (isLocalMode) {
+      const mockAttendance: Attendance = {
+        id: `mock-attendance-${member.id}-${Date.now()}`,
+        checkInTime: new Date().toISOString(),
+        memberId: member.id,
+      };
+
+      setAttendanceHistory((currentRecords) => [mockAttendance, ...currentRecords]);
+      setCheckInMessage('Mock check-in recorded locally.');
+      setCheckInMessageTone('success');
+      setActiveSideTab('attendance');
+      return;
+    }
+
+    try {
+      setIsCheckingIn(true);
+      setCheckInMessage(null);
+      setCheckInMessageTone(null);
+
+      const response = await fetch(`${API_BASE_URL}/api/members/${member.id}/check-in`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+        },
+        credentials: 'include',
+      });
+
+      const responseBody = (await parseApiResponse(response)) as ApiAttendance | { error?: string };
+
+      if (!response.ok) {
+        const message = 'error' in responseBody && typeof responseBody.error === 'string'
+          ? responseBody.error
+          : 'Failed to check in member';
+        throw new Error(message);
+      }
+
+      const createdAttendance = normalizeAttendanceRecord(responseBody as ApiAttendance);
+      setAttendanceHistory((currentRecords) => [createdAttendance, ...currentRecords]);
+      setCheckInMessage('Check-in recorded successfully.');
+      setCheckInMessageTone('success');
+      setActiveSideTab('attendance');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to check in member';
+      setCheckInMessage(message);
+      setCheckInMessageTone('error');
+    } finally {
+      setIsCheckingIn(false);
+    }
   };
 
   const handleDeactivate = async () => {
@@ -388,6 +554,7 @@ export default function MemberProfilePage({
           firstName: normalizedFirstName,
           lastName: normalizedLastName,
           contactNumber: normalizedContactNumber,
+          notes: normalizedNotes,
         }),
       });
 
@@ -443,6 +610,11 @@ export default function MemberProfilePage({
         <div className="max-w-3xl w-full mx-auto flex items-start justify-center pr-4 md:pr-12">
           {activeSideTab === 'payment' ? (
             <MemberPaymentHistoryPanel memberId={member.id} />
+          ) : activeSideTab === 'attendance' ? (
+            <MemberAttendanceHistoryPanel
+              memberId={member.id}
+              attendances={attendanceHistory}
+            />
           ) : (
             /* ── Profile Card ── */
             <div
@@ -493,9 +665,9 @@ export default function MemberProfilePage({
                     variant: 'secondary',
                   },
                   {
-                    label: 'Check-In',
+                    label: isCheckingIn ? 'Checking In...' : 'Check-In',
                     onClick: handleCheckIn,
-                    disabled: !canCheckIn,
+                    disabled: !canCheckIn || isCheckingIn,
                     variant: 'neutral',
                   },
                   {
@@ -509,6 +681,12 @@ export default function MemberProfilePage({
 
               {deactivateError && (
                 <p className="mt-3 text-center text-sm text-red-600">{deactivateError}</p>
+              )}
+
+              {checkInMessage && (
+                <p className={`mt-3 text-center text-sm ${checkInMessageTone === 'error' ? 'text-red-600' : 'text-green-700'}`}>
+                  {checkInMessage}
+                </p>
               )}
             </div>
           )}

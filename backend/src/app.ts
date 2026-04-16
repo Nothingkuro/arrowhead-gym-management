@@ -9,6 +9,7 @@ import equipmentRoutes from './routes/equipment.routes';
 import supplierRoutes from './routes/supplier.routes';
 import reportRoutes from './routes/report.routes';
 import membershipPlanRoutes from './routes/membershipPlan.routes';
+import profileRoutes from './routes/profile.routes';
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/api', equipmentRoutes);
 app.use('/api', supplierRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', membershipPlanRoutes);
+app.use('/api', profileRoutes);
 
 
 export default app;

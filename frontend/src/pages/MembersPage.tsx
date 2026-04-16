@@ -218,9 +218,10 @@ export default function MembersPage({
     setAddMemberError(null);
 
     try {
-      const payload: { fullName: string; contactNumber: string } = {
+      const payload: { fullName: string; contactNumber: string; notes: string } = {
         fullName: `${data.firstName} ${data.lastName}`.trim(),
         contactNumber: data.contactNumber,
+        notes: data.notes.trim(),
       };
 
       const response = await fetch(`${API_BASE_URL}/api/members`, {
@@ -243,7 +244,7 @@ export default function MembersPage({
       }
 
       const createdMember = normalizeMember(responseBody as ApiMember);
-      createdMember.notes = data.notes;
+      createdMember.notes = payload.notes;
 
       if (members) {
         setMembersList((prevMembers) => [createdMember, ...prevMembers]);
