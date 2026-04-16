@@ -62,6 +62,7 @@ model Member {
   firstName     String
   lastName      String
   contactNumber String       @unique
+  notes         String       @default("")
   joinDate      DateTime     @default(now())
   expiryDate    DateTime?
   status        MemberStatus @default(ACTIVE)

@@ -7,3 +7,4 @@ export { default as AdminAssetsPage } from './AdminAssetsPage';
 export { default as SuppliersPage } from './SuppliersPage';
 export { default as ReportsPage } from './ReportsPage';
 export { default as MembershipPlansPage } from './MembershipPlansPage';
+export { default as UserProfilePage } from './UserProfilePage';
