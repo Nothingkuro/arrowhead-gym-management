@@ -11,8 +11,11 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Tag,
 } from 'lucide-react';
 import arrowheadLogo from '../../assets/arrowhead-logo.png';
+
+const USERNAME_UPDATED_EVENT = 'auth-username-updated';
 
 /** Navigation item definition */
 interface NavItem {
@@ -39,10 +42,11 @@ const navItems: NavItem[] = [
 ];
 
 const adminAdditionalNavItems: NavItem[] = [
+  { label: 'Membership Plans', icon: <Tag size={20} />, to: '/dashboard/membership-plans' },
   { label: 'Suppliers', icon: <Truck size={20} />, to: '/dashboard/suppliers' },
   { label: 'Reports', icon: <BarChart3 size={20} />, to: '/dashboard/reports' },
   { label: 'Assets Inventory', icon: <Database size={20} />, to: '/dashboard/manage-assets' },
-  { label: 'Staff', icon: <UserCog size={20} />, to: '/dashboard/staff' },
+  { label: 'Profiles', icon: <UserCog size={20} />, to: '/dashboard/profile' },
 ];
 
 export default function Sidebar({
@@ -58,6 +62,7 @@ export default function Sidebar({
 
   const handleLogout = () => {
     window.sessionStorage.removeItem('authUsername');
+    window.dispatchEvent(new Event(USERNAME_UPDATED_EVENT));
     window.sessionStorage.removeItem('authRole');
     navigate('/');
   };

@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import MemberFormModal, { type MemberFormData } from '../components/AddMemberModal';
+import MemberFormModal, { type MemberFormData } from '../components/members/AddMemberModal';
 import SearchBar from '../components/common/SearchBar';
 import FilterDropdown from '../components/common/FilterDropdown';
 import MemberTableRow from '../components/members/MemberTableRow';
-import { MembershipExpiryAlertList } from '../components/reports';
 import { getAuthHeaders } from '../services/authHeaders';
 import { API_BASE_URL } from '../services/apiBaseUrl';
-import { getUpcomingExpirations } from '../services/reportsApi';
 import type { Member, MemberStatus } from '../types/member';
-import type { MembershipExpiryAlert } from '../types/report';
 
 type MembersFilter = 'ALL' | MemberStatus;
 
@@ -44,6 +41,15 @@ type ApiMembersResponse = {
 };
 
 function normalizeMember(apiMember: ApiMember): Member {
+  let computedStatus = apiMember.status;
+  if (computedStatus === 'ACTIVE' && apiMember.expiryDate) {
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    if (new Date(apiMember.expiryDate) <= todayEnd) {
+      computedStatus = 'EXPIRED';
+    }
+  }
+
   return {
     id: apiMember.id,
     firstName: apiMember.firstName,
@@ -51,7 +57,7 @@ function normalizeMember(apiMember: ApiMember): Member {
     contactNumber: apiMember.contactNumber,
     joinDate: apiMember.joinDate,
     expiryDate: apiMember.expiryDate || '',
-    status: apiMember.status,
+    status: computedStatus,
     notes: apiMember.notes ?? '',
   };
 }
@@ -88,52 +94,8 @@ export default function MembersPage({
   const [membersLoadError, setMembersLoadError] = useState<string | null>(null);
   const [isSubmittingMember, setIsSubmittingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
-  const [expiryAlerts, setExpiryAlerts] = useState<MembershipExpiryAlert[]>([]);
-  const [isLoadingExpiryAlerts, setIsLoadingExpiryAlerts] = useState(false);
-  const [expiryAlertsError, setExpiryAlertsError] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const responseCacheRef = useRef<Map<string, ApiMembersResponse>>(new Map());
-  const authRole = window.sessionStorage.getItem('authRole');
-
-  useEffect(() => {
-    if (authRole !== 'STAFF') {
-      return;
-    }
-
-    let isCancelled = false;
-
-    const loadExpiryAlerts = async () => {
-      try {
-        setIsLoadingExpiryAlerts(true);
-        setExpiryAlertsError(null);
-
-        const alerts = await getUpcomingExpirations(3);
-
-        if (isCancelled) {
-          return;
-        }
-
-        setExpiryAlerts(alerts);
-      } catch (error: unknown) {
-        if (isCancelled) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : 'Failed to load upcoming expirations';
-        setExpiryAlertsError(message);
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingExpiryAlerts(false);
-        }
-      }
-    };
-
-    void loadExpiryAlerts();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [authRole]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -227,7 +189,7 @@ export default function MembersPage({
         }
 
         const paginatedData = data as ApiMembersResponse;
-  responseCacheRef.current.set(cacheKey, paginatedData);
+        responseCacheRef.current.set(cacheKey, paginatedData);
         setMembersList(paginatedData.items.map(normalizeMember));
         setTotalMembers(paginatedData.total);
         setTotalPages(Math.max(1, paginatedData.totalPages));
@@ -256,9 +218,10 @@ export default function MembersPage({
     setAddMemberError(null);
 
     try {
-      const payload: { fullName: string; contactNumber: string } = {
+      const payload: { fullName: string; contactNumber: string; notes: string } = {
         fullName: `${data.firstName} ${data.lastName}`.trim(),
         contactNumber: data.contactNumber,
+        notes: data.notes.trim(),
       };
 
       const response = await fetch(`${API_BASE_URL}/api/members`, {
@@ -281,7 +244,7 @@ export default function MembersPage({
       }
 
       const createdMember = normalizeMember(responseBody as ApiMember);
-      createdMember.notes = data.notes;
+      createdMember.notes = payload.notes;
 
       if (members) {
         setMembersList((prevMembers) => [createdMember, ...prevMembers]);
@@ -307,22 +270,6 @@ export default function MembersPage({
           Members
         </h1>
       </div>
-
-      {authRole === 'STAFF' && (
-        <div className="mb-6 mx-auto max-w-3xl">
-          {isLoadingExpiryAlerts ? (
-            <div className="rounded-xl border border-neutral-300 bg-surface px-5 py-4 text-sm text-neutral-500">
-              Loading upcoming expirations...
-            </div>
-          ) : expiryAlertsError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-              {expiryAlertsError}
-            </div>
-          ) : (
-            <MembershipExpiryAlertList alerts={expiryAlerts} />
-          )}
-        </div>
-      )}
 
       {/* ── Search & Filter Bar ── */}
       <div className="flex items-center gap-3 mb-6 max-w-2xl mx-auto">
