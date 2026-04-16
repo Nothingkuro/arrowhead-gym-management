@@ -8,8 +8,8 @@ const SEEDED_ACTIVE_MEMBER = {
 };
 
 test.describe('Payment and subscription tracking e2e', () => {
-  test.beforeAll(() => {
-    resetDatabase('payment-subscription-beforeAll');
+  test.beforeAll(async () => {
+    await resetDatabase('payment-subscription-beforeAll');
   });
 
   test.beforeEach(async ({ page }) => {
