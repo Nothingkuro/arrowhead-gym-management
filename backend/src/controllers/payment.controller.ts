@@ -1,9 +1,13 @@
 import { MemberStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { PaymentFactory } from '../patterns/factory-method/payment.factory';
+import { notifyPaymentCreated } from '../patterns/observer-pattern/payment-created.observer';
+import { resolvePaymentMethodStrategy } from '../patterns/strategy-pattern/payment-method.strategy';
 
 const MEMBER_NOT_FOUND_DURING_PAYMENT_TX = 'MEMBER_NOT_FOUND_DURING_PAYMENT_TX';
 const MAX_PAYMENT_TX_ATTEMPTS = 3;
+const paymentFactory = new PaymentFactory();
 
 /**
  * Detects Prisma transaction conflicts that are safe to retry.
@@ -62,15 +66,22 @@ export const createPayment = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    if (paymentMethod !== PaymentMethod.CASH && paymentMethod !== PaymentMethod.GCASH) {
+    const paymentMethodStrategy = resolvePaymentMethodStrategy(paymentMethod);
+
+    if (!paymentMethodStrategy) {
       return res.status(400).json({ error: 'Invalid payment method' });
     }
 
     const parsedAmountPaid =
       amountPaid === undefined || amountPaid === null ? null : Number(amountPaid);
 
-    if (parsedAmountPaid !== null && (!Number.isFinite(parsedAmountPaid) || parsedAmountPaid <= 0)) {
-      return res.status(400).json({ error: 'Amount paid must be a positive number' });
+    if (parsedAmountPaid !== null) {
+      try {
+        paymentMethodStrategy.validate(parsedAmountPaid);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Amount paid must be a positive number';
+        return res.status(400).json({ error: message });
+      }
     }
 
     const [plan, member, user] = await Promise.all([
@@ -152,14 +163,16 @@ export const createPayment = async (req: Request, res: Response) => {
               newExpiryDate.setDate(newExpiryDate.getDate() + plan.durationDays);
             }
 
+            const paymentCreatePayload = paymentFactory.create({
+              memberId,
+              planId,
+              amount: finalAmount,
+              paymentMethod: paymentMethodStrategy.method,
+              processedById,
+            });
+
             const payment = await tx.payment.create({
-              data: {
-                memberId,
-                planId,
-                amount: finalAmount,
-                paymentMethod,
-                processedById,
-              },
+              data: paymentCreatePayload,
             });
 
             const updatedMember = await tx.member.update({
@@ -206,6 +219,16 @@ export const createPayment = async (req: Request, res: Response) => {
     if (!result) {
       throw new Error('Failed to process payment transaction');
     }
+
+    await notifyPaymentCreated({
+      paymentId: result.payment.id,
+      memberId: result.payment.memberId,
+      planId: result.payment.planId,
+      amount: Number(result.payment.amount),
+      paymentMethod: result.payment.paymentMethod,
+      processedById: result.payment.processedById,
+      happenedAt: result.payment.transactionDate.toISOString(),
+    });
 
     res.status(201).json({
       payment: {

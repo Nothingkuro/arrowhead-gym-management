@@ -1,6 +1,10 @@
-import { MemberStatus, PaymentMethod } from '@prisma/client';
+import { MemberStatus } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import {
+  createEmptyPaymentMethodBreakdown,
+  resolvePaymentMethodStrategy,
+} from '../patterns/strategy-pattern/payment-method.strategy';
 
 /**
  * Computes the local start-of-day boundary for date-window reporting queries.
@@ -49,20 +53,15 @@ export const getDailyRevenueSummary = async (_req: Request, res: Response): Prom
       },
     });
 
-    const summary = payments.reduce(
-      (acc, payment) => {
-        const amount = toNumber(payment.amount);
+    const summary = payments.reduce((acc, payment) => {
+      const strategy = resolvePaymentMethodStrategy(payment.paymentMethod);
 
-        if (payment.paymentMethod === PaymentMethod.CASH) {
-          acc.cash += amount;
-        } else if (payment.paymentMethod === PaymentMethod.GCASH) {
-          acc.gcash += amount;
-        }
-
+      if (!strategy) {
         return acc;
-      },
-      { cash: 0, gcash: 0 },
-    );
+      }
+
+      return strategy.applyRevenue(toNumber(payment.amount), acc);
+    }, createEmptyPaymentMethodBreakdown());
 
     const total = summary.cash + summary.gcash;
 
@@ -306,20 +305,15 @@ export const getReportsOverview = async (req: Request, res: Response): Promise<v
       }),
     ]);
 
-    const daily = dailyPayments.reduce(
-      (acc, payment) => {
-        const amount = toNumber(payment.amount);
+    const daily = dailyPayments.reduce((acc, payment) => {
+      const strategy = resolvePaymentMethodStrategy(payment.paymentMethod);
 
-        if (payment.paymentMethod === PaymentMethod.CASH) {
-          acc.cash += amount;
-        } else if (payment.paymentMethod === PaymentMethod.GCASH) {
-          acc.gcash += amount;
-        }
-
+      if (!strategy) {
         return acc;
-      },
-      { cash: 0, gcash: 0 },
-    );
+      }
+
+      return strategy.applyRevenue(toNumber(payment.amount), acc);
+    }, createEmptyPaymentMethodBreakdown());
 
     const monthlyTotals = new Map<string, { month: number; year: number; total: number }>();
 

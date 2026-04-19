@@ -1,6 +1,7 @@
 import { MemberStatus, Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { MemberFactory } from '../patterns/factory-method/member.factory';
 
 type MemberListItem = {
   id: string;
@@ -18,6 +19,8 @@ type AttendanceListItem = {
   memberId: string;
   checkInTime: string;
 };
+
+const memberFactory = new MemberFactory();
 
 /**
  * Normalizes full-name input for consistent member records.
@@ -241,17 +244,14 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const [firstName, ...lastNameParts] = fullName.split(' ');
+    const memberCreatePayload = memberFactory.create({
+      fullName,
+      contactNumber,
+      notes,
+    });
 
     const createdMember = await prisma.member.create({
-      data: {
-        firstName,
-        lastName: lastNameParts.join(' '),
-        contactNumber,
-        notes,
-        // joinDate is set to current timestamp by default in schema.
-        status: 'ACTIVE',
-      },
+      data: memberCreatePayload,
       select: {
         id: true,
         firstName: true,
