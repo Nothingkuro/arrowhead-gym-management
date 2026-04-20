@@ -22,6 +22,7 @@ jest.mock('../../../src/lib/prisma', () => ({
 
 import { createPayment, getMemberPayments, getPlans } from '../../../src/controllers/payment.controller';
 import prisma from '../../../src/lib/prisma';
+import { globalNotificationSubject } from '../../../src/patterns/observer-pattern/notification.subject';
 
 function createMockResponse(): Response {
   const res = {
@@ -39,6 +40,7 @@ describe('payment controller (mocked)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(globalNotificationSubject, 'notifyAll').mockResolvedValue(undefined);
   });
 
   afterEach(() => {

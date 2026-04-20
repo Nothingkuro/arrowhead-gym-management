@@ -2,6 +2,7 @@ import { MemberStatus, Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { MemberFactory } from '../patterns/factory-method/member.factory';
+import { globalNotificationSubject } from '../patterns/observer-pattern/notification.subject';
 
 type MemberListItem = {
   id: string;
@@ -264,6 +265,8 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
       },
     });
 
+    await globalNotificationSubject.notifyAll();
+
     res.status(201).json(toMemberListItem(createdMember));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -356,6 +359,8 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
         status: true,
       },
     });
+
+    await globalNotificationSubject.notifyAll();
 
     res.status(200).json(toMemberListItem(updatedMember));
   } catch (error) {

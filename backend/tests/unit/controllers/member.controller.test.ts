@@ -29,6 +29,7 @@ import {
   updateMember,
 } from '../../../src/controllers/member.controller';
 import prisma from '../../../src/lib/prisma';
+import { globalNotificationSubject } from '../../../src/patterns/observer-pattern/notification.subject';
 
 describe('member controller', () => {
   const mockedPrisma = prisma as any;
@@ -43,6 +44,7 @@ describe('member controller', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(globalNotificationSubject, 'notifyAll').mockResolvedValue(undefined);
   });
 
   afterEach(() => {

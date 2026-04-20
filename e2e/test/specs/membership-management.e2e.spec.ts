@@ -147,6 +147,11 @@ test.describe('Membership management e2e', () => {
     await page.getByRole('button', { name: 'Check-In' }).click();
     await checkInResponsePromise;
 
+    await expect(page.getByText('Check-in recorded successfully.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Attendance History' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Deactivate' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Attendance' }).click();
     await expect(page.getByRole('heading', { name: 'Attendance History' })).toBeVisible();
     await expect(page.locator('tbody tr').first()).toBeVisible();
 

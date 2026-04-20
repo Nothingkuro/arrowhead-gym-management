@@ -478,7 +478,6 @@ export default function MemberProfilePage({
       setAttendanceHistory((currentRecords) => [mockAttendance, ...currentRecords]);
       setCheckInMessage('Mock check-in recorded locally.');
       setCheckInMessageTone('success');
-      setActiveSideTab('attendance');
       return;
     }
 
@@ -508,7 +507,6 @@ export default function MemberProfilePage({
       setAttendanceHistory((currentRecords) => [createdAttendance, ...currentRecords]);
       setCheckInMessage('Check-in recorded successfully.');
       setCheckInMessageTone('success');
-      setActiveSideTab('attendance');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to check in member';
       setCheckInMessage(message);

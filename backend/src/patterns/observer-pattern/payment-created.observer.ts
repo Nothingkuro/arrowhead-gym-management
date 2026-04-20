@@ -1,3 +1,6 @@
+import { Observer, Subject } from './base.observer';
+import { globalNotificationSubject } from './notification.subject';
+
 export type PaymentCreatedEvent = {
   paymentId: string;
   memberId: string;
@@ -8,31 +11,10 @@ export type PaymentCreatedEvent = {
   happenedAt: string;
 };
 
-interface Observer<TEvent> {
-  update(event: TEvent): Promise<void> | void;
-}
-
-class Subject<TEvent> {
-  private observers = new Set<Observer<TEvent>>();
-
-  subscribe(observer: Observer<TEvent>): void {
-    this.observers.add(observer);
-  }
-
-  async notify(event: TEvent): Promise<void> {
-    for (const observer of this.observers) {
-      try {
-        await observer.update(event);
-      } catch (error) {
-        console.error('Observer execution failed:', error);
-      }
-    }
-  }
-}
-
 class PaymentAuditLogObserver implements Observer<PaymentCreatedEvent> {
-  update(event: PaymentCreatedEvent): void {
+  async update(event: PaymentCreatedEvent): Promise<void> {
     console.info('[payment-created]', JSON.stringify(event));
+    await globalNotificationSubject.notifyAll();
   }
 }
 

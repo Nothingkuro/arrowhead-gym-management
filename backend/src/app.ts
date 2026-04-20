@@ -11,6 +11,7 @@ import reportRoutes from './routes/report.routes';
 import membershipPlanRoutes from './routes/membershipPlan.routes';
 import profileRoutes from './routes/profile.routes';
 import healthRoutes from './routes/health.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 
@@ -95,5 +96,6 @@ app.use('/api', supplierRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', membershipPlanRoutes);
 app.use('/api', profileRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 export default app;
