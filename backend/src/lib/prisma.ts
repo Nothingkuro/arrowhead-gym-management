@@ -12,6 +12,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import ConfigManager from "../config/ConfigManager";
 
+const config = ConfigManager.getInstance();
+
 // Extend globalThis to include prisma for development hot-reload handling
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -25,7 +27,6 @@ const globalForPrisma = globalThis as unknown as {
  * @throws {Error} When DATABASE_URL is missing or cannot be normalized.
  */
 function createPrismaClient(): PrismaClient {
-  const config = ConfigManager.getInstance();
   const connectionString = config.databaseUrl;
 
   if (!connectionString) {
@@ -55,7 +56,7 @@ function createPrismaClient(): PrismaClient {
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 // Store the instance in globalThis for development hot-reload
-if (process.env.NODE_ENV !== "production") {
+if (config.nodeEnv !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
@@ -72,7 +73,7 @@ export async function disconnectPrisma(): Promise<void> {
     globalForPrisma.prismaPool = undefined;
   }
 
-  if (process.env.NODE_ENV !== "production") {
+  if (config.nodeEnv !== "production") {
     globalForPrisma.prisma = undefined;
   }
 }
