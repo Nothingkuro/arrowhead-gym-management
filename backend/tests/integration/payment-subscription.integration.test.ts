@@ -191,6 +191,7 @@ describe('Payment and subscription API', () => {
     try {
       const paymentsBefore = await prisma.payment.count({ where: { memberId } });
 
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       const paymentResponse = await request(app)
         .post('/api/payments')
         .set('Cookie', authCookie)
@@ -199,6 +200,7 @@ describe('Payment and subscription API', () => {
           planId: overflowPlan.id,
           paymentMethod: 'CASH',
         });
+      consoleSpy.mockRestore();
 
       expect(paymentResponse.status).toBe(500);
       expect(paymentResponse.body).toEqual({ error: 'Failed to process payment' });

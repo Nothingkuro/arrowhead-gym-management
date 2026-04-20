@@ -38,6 +38,8 @@ describe('auth utils', () => {
 
   it('returns secure cookie options in production', () => {
     process.env.NODE_ENV = 'production';
+    process.env.JWT_SECRET = 'test-secret-for-production';
+    process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 
     const options = getSessionCookieOptions();
 
