@@ -2,9 +2,16 @@ import { MemberStatus } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import {
+  ExpiryAlertFactory,
+  InventoryAlertFactory,
+} from '../patterns/factory-method/report.factory';
+import {
   createEmptyPaymentMethodBreakdown,
   resolvePaymentMethodStrategy,
 } from '../patterns/strategy-pattern/payment-method.strategy';
+
+const expiryAlertFactory = new ExpiryAlertFactory();
+const inventoryAlertFactory = new InventoryAlertFactory();
 
 /**
  * Computes the local start-of-day boundary for date-window reporting queries.
@@ -149,13 +156,6 @@ export const getUpcomingExpirations = async (req: Request, res: Response): Promi
           lte: end,
         },
       },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        contactNumber: true,
-        expiryDate: true,
-      },
       orderBy: {
         expiryDate: 'asc',
       },
@@ -164,12 +164,7 @@ export const getUpcomingExpirations = async (req: Request, res: Response): Promi
     res.status(200).json(
       members
         .filter((member) => member.expiryDate)
-        .map((member) => ({
-          id: member.id,
-          name: `${member.firstName} ${member.lastName}`.trim(),
-          expiryDate: member.expiryDate!.toISOString(),
-          contactNumber: member.contactNumber,
-        })),
+        .map((member) => expiryAlertFactory.create(member)),
     );
   } catch (error) {
     console.error('Error fetching upcoming expirations:', error);
@@ -197,24 +192,13 @@ export const getLowInventoryAlerts = async (req: Request, res: Response): Promis
           lt: threshold,
         },
       },
-      select: {
-        id: true,
-        itemName: true,
-        quantity: true,
-      },
       orderBy: {
         quantity: 'asc',
       },
     });
 
     res.status(200).json(
-      equipment.map((item) => ({
-        id: item.id,
-        itemName: item.itemName,
-        category: 'Equipment',
-        quantity: item.quantity,
-        threshold,
-      })),
+      equipment.map((item) => inventoryAlertFactory.create({ equipment: item, threshold })),
     );
   } catch (error) {
     console.error('Error fetching low inventory alerts:', error);
@@ -277,13 +261,6 @@ export const getReportsOverview = async (req: Request, res: Response): Promise<v
             lte: endOfExpiryWindow,
           },
         },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          contactNumber: true,
-          expiryDate: true,
-        },
         orderBy: {
           expiryDate: 'asc',
         },
@@ -293,11 +270,6 @@ export const getReportsOverview = async (req: Request, res: Response): Promise<v
           quantity: {
             lt: threshold,
           },
-        },
-        select: {
-          id: true,
-          itemName: true,
-          quantity: true,
         },
         orderBy: {
           quantity: 'asc',
@@ -343,19 +315,10 @@ export const getReportsOverview = async (req: Request, res: Response): Promise<v
       }),
       membershipExpiryAlerts: expiringMembers
         .filter((member) => member.expiryDate)
-        .map((member) => ({
-          id: member.id,
-          name: `${member.firstName} ${member.lastName}`.trim(),
-          expiryDate: member.expiryDate!.toISOString(),
-          contactNumber: member.contactNumber,
-        })),
-      inventoryAlerts: inventory.map((item) => ({
-        id: item.id,
-        itemName: item.itemName,
-        category: 'Equipment',
-        quantity: item.quantity,
-        threshold,
-      })),
+        .map((member) => expiryAlertFactory.create(member)),
+      inventoryAlerts: inventory.map((item) =>
+        inventoryAlertFactory.create({ equipment: item, threshold }),
+      ),
     });
   } catch (error) {
     console.error('Error fetching reports overview:', error);
