@@ -68,11 +68,9 @@ export const createPayment = async (req: Request, res: Response) => {
 
     const paymentContext = getPaymentContext(paymentMethod);
 
-    if (!paymentContext.strategy) {
+    if (!paymentContext.isSupportedMethod()) {
       return res.status(400).json({ error: 'Invalid payment method' });
     }
-
-    const paymentStrategy = paymentContext.strategy;
 
     const parsedAmountPaid =
       amountPaid === undefined || amountPaid === null ? null : Number(amountPaid);
@@ -169,7 +167,7 @@ export const createPayment = async (req: Request, res: Response) => {
               memberId,
               planId,
               amount: finalAmount,
-              paymentMethod: paymentStrategy.method,
+              paymentMethod: paymentContext.getMethod(),
               processedById,
             });
 

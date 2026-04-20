@@ -28,10 +28,22 @@ class GCashPaymentStrategy implements PaymentProcessingStrategy {
 const strategies: PaymentProcessingStrategy[] = [new CashPaymentStrategy(), new GCashPaymentStrategy()];
 
 export class PaymentProcessingContext {
-  readonly strategy: PaymentProcessingStrategy | null;
+  private readonly strategy: PaymentProcessingStrategy | null;
 
   constructor(strategy: PaymentProcessingStrategy | null) {
     this.strategy = strategy;
+  }
+
+  isSupportedMethod(): boolean {
+    return this.strategy !== null;
+  }
+
+  getMethod(): PaymentMethod {
+    if (!this.strategy) {
+      throw new Error('Invalid payment method');
+    }
+
+    return this.strategy.method;
   }
 
   validate(amount: number): void {

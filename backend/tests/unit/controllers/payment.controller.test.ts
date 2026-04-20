@@ -235,6 +235,25 @@ describe('payment controller (mocked)', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Invalid payment method' });
   });
 
+  it('returns 400 in POST /api/payments when payment method is not a string', async () => {
+    const req = {
+      body: {
+        memberId: 'member-1',
+        planId: 'plan-1',
+        paymentMethod: 123,
+      },
+      authUser: {
+        id: 'user-1',
+      },
+    } as unknown as Request;
+    const res = createMockResponse();
+
+    await createPayment(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid payment method' });
+  });
+
   it('returns 400 in POST /api/payments when amountPaid is not positive', async () => {
     const req = {
       body: {
