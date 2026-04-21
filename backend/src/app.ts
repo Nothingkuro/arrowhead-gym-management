@@ -12,8 +12,11 @@ import membershipPlanRoutes from './routes/membershipPlan.routes';
 import profileRoutes from './routes/profile.routes';
 import healthRoutes from './routes/health.routes';
 import notificationRoutes from './routes/notification.routes';
+import { bootstrapObserverPattern } from './patterns/observer-pattern/observer.bootstrap';
 
 const app = express();
+
+bootstrapObserverPattern();
 
 /**
  * Builds the frontend allowlist used by CORS checks.

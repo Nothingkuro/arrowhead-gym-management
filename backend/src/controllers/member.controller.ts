@@ -8,7 +8,7 @@ import {
   MEMBER_NOT_FOUND_FOR_CHECKIN,
 } from '../patterns/command/check-in.command';
 import { MemberFactory } from '../patterns/factory-method/member.factory';
-import { globalNotificationSubject } from '../patterns/observer-pattern/notification.subject';
+import { notifyMemberChanged } from '../patterns/observer-pattern/member-changed.observer';
 
 type MemberListItem = {
   id: string;
@@ -271,7 +271,11 @@ export const createMember = async (req: Request, res: Response): Promise<void> =
       },
     });
 
-    await globalNotificationSubject.notifyAll();
+    await notifyMemberChanged({
+      memberId: createdMember.id,
+      action: 'CREATED',
+      happenedAt: new Date().toISOString(),
+    });
 
     res.status(201).json(toMemberListItem(createdMember));
   } catch (error) {
@@ -366,7 +370,11 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
       },
     });
 
-    await globalNotificationSubject.notifyAll();
+    await notifyMemberChanged({
+      memberId: updatedMember.id,
+      action: 'UPDATED',
+      happenedAt: new Date().toISOString(),
+    });
 
     res.status(200).json(toMemberListItem(updatedMember));
   } catch (error) {

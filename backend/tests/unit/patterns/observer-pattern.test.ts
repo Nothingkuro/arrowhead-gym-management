@@ -1,5 +1,6 @@
 import { Subject } from '../../../src/patterns/observer-pattern/base.observer';
 import { globalNotificationSubject } from '../../../src/patterns/observer-pattern/notification.subject';
+import { bootstrapObserverPattern } from '../../../src/patterns/observer-pattern/observer.bootstrap';
 import {
   notifyPaymentCreated,
   type PaymentCreatedEvent,
@@ -17,6 +18,7 @@ const PAYMENT_CREATED_EVENT: PaymentCreatedEvent = {
 
 describe('observer pattern', () => {
   beforeEach(() => {
+    bootstrapObserverPattern();
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.spyOn(globalNotificationSubject, 'notifyAll').mockResolvedValue(undefined);
@@ -36,14 +38,14 @@ describe('observer pattern', () => {
     expect(globalNotificationSubject.notifyAll).toHaveBeenCalledTimes(1);
   });
 
-  it('does not notify unsubscribed observers', async () => {
+  it('does not notify detached observers', async () => {
     const subject = new Subject<PaymentCreatedEvent>();
     const observer = {
       update: jest.fn(),
     };
 
-    subject.subscribe(observer);
-    subject.unsubscribe(observer);
+    subject.attach(observer);
+    subject.detach(observer);
 
     await subject.notify(PAYMENT_CREATED_EVENT);
 
@@ -69,9 +71,9 @@ describe('observer pattern', () => {
       update: jest.fn().mockRejectedValue(new Error('observer failed')),
     };
 
-    subject.subscribe(slowObserver);
-    subject.subscribe(fastObserver);
-    subject.subscribe(failingObserver);
+    subject.attach(slowObserver);
+    subject.attach(fastObserver);
+    subject.attach(failingObserver);
 
     const notifyPromise = subject.notify({ id: 'event-1' });
 

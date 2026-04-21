@@ -33,6 +33,7 @@ import {
 } from '../../../src/controllers/member.controller';
 import prisma from '../../../src/lib/prisma';
 import { globalNotificationSubject } from '../../../src/patterns/observer-pattern/notification.subject';
+import { bootstrapObserverPattern } from '../../../src/patterns/observer-pattern/observer.bootstrap';
 
 describe('member controller', () => {
   const mockedPrisma = prisma as any;
@@ -45,6 +46,7 @@ describe('member controller', () => {
   }
 
   beforeEach(() => {
+    bootstrapObserverPattern();
     jest.clearAllMocks();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.spyOn(globalNotificationSubject, 'notifyAll').mockResolvedValue(undefined);
@@ -275,6 +277,7 @@ describe('member controller', () => {
     });
 
     expect(res.status).toHaveBeenCalledWith(201);
+    expect(globalNotificationSubject.notifyAll).toHaveBeenCalledTimes(1);
     expect(res.json).toHaveBeenCalledWith({
       id: 'member-1',
       firstName: 'John',
@@ -426,6 +429,7 @@ describe('member controller', () => {
     });
 
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(globalNotificationSubject.notifyAll).toHaveBeenCalledTimes(1);
     expect(res.json).toHaveBeenCalledWith({
       id: 'member-2',
       firstName: 'Jane',

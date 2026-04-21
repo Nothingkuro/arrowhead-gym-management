@@ -5,12 +5,20 @@ export interface Observer<TEvent> {
 export class Subject<TEvent> {
   private observers = new Set<Observer<TEvent>>();
 
-  subscribe(observer: Observer<TEvent>): void {
+  attach(observer: Observer<TEvent>): void {
     this.observers.add(observer);
   }
 
-  unsubscribe(observer: Observer<TEvent>): void {
+  detach(observer: Observer<TEvent>): void {
     this.observers.delete(observer);
+  }
+
+  subscribe(observer: Observer<TEvent>): void {
+    this.attach(observer);
+  }
+
+  unsubscribe(observer: Observer<TEvent>): void {
+    this.detach(observer);
   }
 
   async notify(event: TEvent): Promise<void> {

@@ -11,15 +11,30 @@ export type PaymentCreatedEvent = {
   happenedAt: string;
 };
 
-class PaymentAuditLogObserver implements Observer<PaymentCreatedEvent> {
+export class PaymentAuditLogObserver implements Observer<PaymentCreatedEvent> {
   async update(event: PaymentCreatedEvent): Promise<void> {
     console.info('[payment-created]', JSON.stringify(event));
+  }
+}
+
+export class PaymentSseRefreshObserver implements Observer<PaymentCreatedEvent> {
+  async update(): Promise<void> {
     await globalNotificationSubject.notifyAll();
   }
 }
 
 const paymentCreatedSubject = new Subject<PaymentCreatedEvent>();
-paymentCreatedSubject.subscribe(new PaymentAuditLogObserver());
+let isPaymentCreatedObserversRegistered = false;
+
+export function registerPaymentCreatedObservers(): void {
+  if (isPaymentCreatedObserversRegistered) {
+    return;
+  }
+
+  paymentCreatedSubject.attach(new PaymentAuditLogObserver());
+  paymentCreatedSubject.attach(new PaymentSseRefreshObserver());
+  isPaymentCreatedObserversRegistered = true;
+}
 
 export async function notifyPaymentCreated(event: PaymentCreatedEvent): Promise<void> {
   await paymentCreatedSubject.notify(event);
