@@ -6,7 +6,12 @@ import SubmitPaymentButton from '../components/payments/SubmitPaymentButton';
 import useUndoTimer from '../hooks/useUndoTimer';
 import { getAuthHeaders } from '../services/authHeaders';
 import { API_BASE_URL } from '../services/apiBaseUrl';
-import type { MembershipPlan, PaymentMember, PaymentMethod } from '../types/payment';
+import type {
+  CreatePaymentRequest,
+  MembershipPlan,
+  PaymentMember,
+  PaymentMethod,
+} from '../types/payment';
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'GCASH'];
 
@@ -122,6 +127,7 @@ export default function PaymentsPage({
   const [plansList, setPlansList] = useState<MembershipPlan[]>(plans ?? []);
   const [selectedMemberId, setSelectedMemberId] = useState(initialSelectedMemberId);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(initialPaymentMethod);
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState(initialSelectedPlanId);
   const [isLoading, setIsLoading] = useState(initialLoading);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -280,6 +286,12 @@ export default function PaymentsPage({
     setSelectedPaymentMethod(initialPaymentMethod);
   }, [initialPaymentMethod]);
 
+  useEffect(() => {
+    if (selectedPaymentMethod !== 'GCASH' && referenceNumber !== '') {
+      setReferenceNumber('');
+    }
+  }, [referenceNumber, selectedPaymentMethod]);
+
   /**
    * Handles handle submit payment for route-level dashboard orchestration.
    * @returns A promise that resolves when processing completes.
@@ -333,10 +345,23 @@ export default function PaymentsPage({
       return;
     }
 
+    if (selectedPaymentMethod === 'GCASH' && referenceNumber.trim().length < 8) {
+      setSubmitError('GCash reference number must be at least 8 characters.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setSubmitError(null);
       setSubmitSuccess(null);
+
+      const paymentPayload: CreatePaymentRequest = {
+        memberId: selectedMemberId,
+        planId: selectedPlanId,
+        paymentMethod: selectedPaymentMethod,
+        amountPaid: selectedPlan.price,
+        referenceNumber: selectedPaymentMethod === 'GCASH' ? referenceNumber.trim() : undefined,
+      };
 
       const response = await fetch(`${API_BASE_URL}/api/payments`, {
         method: 'POST',
@@ -345,12 +370,7 @@ export default function PaymentsPage({
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
         },
-        body: JSON.stringify({
-          memberId: selectedMemberId,
-          planId: selectedPlanId,
-          paymentMethod: selectedPaymentMethod,
-          amountPaid: selectedPlan.price,
-        }),
+        body: JSON.stringify(paymentPayload),
       });
 
       const data = (await parseApiResponse(response)) as CreatePaymentResponse;
@@ -380,6 +400,7 @@ export default function PaymentsPage({
         || plansList.length === 0
         || !selectedMemberId
         || !selectedPlanId
+        || (selectedPaymentMethod === 'GCASH' && referenceNumber.trim().length < 8)
       )
     )
     || (isUndoAvailable && !undoPaymentId);
@@ -406,6 +427,28 @@ export default function PaymentsPage({
             methods={PAYMENT_METHODS}
           />
 
+          {selectedPaymentMethod === 'GCASH' && (
+            <div className="space-y-2">
+              <label htmlFor="gcashReferenceNumber" className="block text-sm font-medium text-text-primary">
+                GCash Reference Number
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                  Required
+                </span>
+              </label>
+              <input
+                id="gcashReferenceNumber"
+                type="text"
+                value={referenceNumber}
+                onChange={(event) => {
+                  setReferenceNumber(event.target.value);
+                }}
+                placeholder="Enter GCash reference number"
+                className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm text-text-primary placeholder:text-neutral-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                autoComplete="off"
+              />
+            </div>
+          )}
+
           <MembershipPlanTable
             plans={plansList}
             selectedPlanId={selectedPlanId}
@@ -430,6 +473,7 @@ export default function PaymentsPage({
             disabled={isSubmitDisabled}
             label={isSubmitting ? 'Submitting...' : isUndoAvailable ? 'Undo Action' : 'Submit'}
             isUndo={isUndoAvailable}
+            referenceNumber={referenceNumber}
           />
         </div>
       </section>

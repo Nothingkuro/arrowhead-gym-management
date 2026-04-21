@@ -31,6 +31,17 @@ export interface MembershipPlan {
 }
 
 /**
+ * Defines payment request payload used by frontend domain models.
+ */
+export interface CreatePaymentRequest {
+  memberId: string;
+  planId: string;
+  paymentMethod: PaymentMethod;
+  amountPaid: number;
+  referenceNumber?: string;
+}
+
+/**
  * Defines member payment history record used by frontend domain models.
  */
 export interface MemberPaymentHistoryRecord {
