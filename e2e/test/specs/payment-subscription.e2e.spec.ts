@@ -27,6 +27,8 @@ test.describe('Payment and subscription tracking e2e', () => {
     await page.getByText(SEEDED_ACTIVE_MEMBER.fullName, { exact: true }).click();
 
     await page.getByRole('combobox', { name: /payment method/i }).selectOption({ label: 'GCASH' });
+    await expect(page.getByLabel('GCash Reference Number')).toBeVisible();
+    await page.getByLabel('GCash Reference Number').fill('GCASH123');
     await page.getByRole('row', { name: /Quarterly Plus/ }).click();
     await page.getByRole('button', { name: 'Submit' }).click();
 
