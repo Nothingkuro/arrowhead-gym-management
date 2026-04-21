@@ -41,6 +41,16 @@ describe('Payment and subscription API', () => {
   });
 
   beforeAll(async () => {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "referenceNumber" TEXT',
+    );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "previousStatus" TEXT',
+    );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "previousExpiryDate" TIMESTAMP(3)',
+    );
+
     const passwordHash = await hashPassword(password);
 
     await prisma.user.create({
@@ -165,6 +175,67 @@ describe('Payment and subscription API', () => {
     expect(createdPayment.membershipPlan).toBe(planName);
     expect(createdPayment.processedBy).toBe(username);
     expect(createdPayment.amountPhp).toBe(1200);
+  });
+
+  it('rejects GCash payment when reference number is missing', async () => {
+    expect(createdMemberId).toBeTruthy();
+    expect(createdPlanId).toBeTruthy();
+
+    const paymentResponse = await request(app)
+      .post('/api/payments')
+      .set('Cookie', authCookie)
+      .send({
+        memberId: createdMemberId,
+        planId: createdPlanId,
+        paymentMethod: 'GCASH',
+      });
+
+    expect(paymentResponse.status).toBe(400);
+    expect(paymentResponse.body).toEqual({
+      error: 'GCash Reference Number must be exactly 13 digits and contain only numbers.',
+    });
+  });
+
+  it('creates GCash payment when a valid reference number is provided', async () => {
+    expect(createdMemberId).toBeTruthy();
+    expect(createdPlanId).toBeTruthy();
+
+    const paymentResponse = await request(app)
+      .post('/api/payments')
+      .set('Cookie', authCookie)
+      .send({
+        memberId: createdMemberId,
+        planId: createdPlanId,
+        paymentMethod: 'GCASH',
+        referenceNumber: '1029384756123',
+      });
+
+    expect(paymentResponse.status).toBe(201);
+    expect(paymentResponse.body.payment.paymentMethod).toBe('GCASH');
+    expect(paymentResponse.body.payment.referenceNumber).toBe('1029384756123');
+
+    const gcashPaymentId = paymentResponse.body.payment.id as string;
+
+    const historyResponse = await request(app)
+      .get(`/api/members/${createdMemberId}/payments`)
+      .set('Cookie', authCookie);
+
+    expect(historyResponse.status).toBe(200);
+
+    const createdGcashPayment = historyResponse.body.find(
+      (item: { id: string }) => item.id === gcashPaymentId,
+    );
+
+    expect(createdGcashPayment).toBeDefined();
+    expect(createdGcashPayment.referenceNumber).toBe('1029384756123');
+    expect(createdGcashPayment.paymentMethod).toBe('GCASH');
+
+    const undoResponse = await request(app)
+      .post(`/api/payments/${gcashPaymentId}/undo`)
+      .set('Cookie', authCookie)
+      .send();
+
+    expect(undoResponse.status).toBe(200);
   });
 
   it('should successfully undo a payment within the grace period and revert member state', async () => {

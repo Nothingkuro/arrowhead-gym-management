@@ -18,6 +18,10 @@ interface SubmitPaymentButtonProps {
    * Marks whether the button is currently in undo mode.
    */
   isUndo?: boolean;
+  /**
+   * Optional payment reference used by submit payload flows.
+   */
+  referenceNumber?: string;
 }
 
 /**
@@ -31,6 +35,7 @@ export default function SubmitPaymentButton({
   disabled = false,
   label = 'Submit',
   isUndo = false,
+  referenceNumber = '',
 }: SubmitPaymentButtonProps) {
   const themeClasses = isUndo
     ? 'bg-red-500 shadow-red-500/20 hover:bg-red-600 hover:shadow-red-500/30'
@@ -43,6 +48,7 @@ export default function SubmitPaymentButton({
         disabled={disabled}
         onClick={onClick}
         data-undo={isUndo ? 'true' : 'false'}
+        data-reference-number={referenceNumber}
         className={`
           px-10 py-2.5 text-text-light text-sm font-semibold
           rounded-full shadow-md

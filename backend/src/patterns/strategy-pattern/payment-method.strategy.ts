@@ -1,14 +1,21 @@
 import { PaymentMethod } from '@prisma/client';
 
+export type PaymentValidationPayload = {
+  amount: number;
+  referenceNumber?: string;
+};
+
 export interface PaymentProcessingStrategy {
   readonly method: PaymentMethod;
-  validate(amount: number): void;
+  validate(payload: PaymentValidationPayload): void;
 }
 
 class CashPaymentStrategy implements PaymentProcessingStrategy {
   readonly method = PaymentMethod.CASH;
 
-  validate(amount: number): void {
+  validate(payload: PaymentValidationPayload): void {
+    const { amount } = payload;
+
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('Amount paid must be a positive number');
     }
@@ -18,9 +25,17 @@ class CashPaymentStrategy implements PaymentProcessingStrategy {
 class GCashPaymentStrategy implements PaymentProcessingStrategy {
   readonly method = PaymentMethod.GCASH;
 
-  validate(amount: number): void {
+  validate(payload: PaymentValidationPayload): void {
+    const { amount, referenceNumber } = payload;
+
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('Amount paid must be a positive number');
+    }
+
+    const normalizedReferenceNumber = referenceNumber?.trim() ?? '';
+
+    if (!/^\d{13}$/.test(normalizedReferenceNumber)) {
+      throw new Error('GCash Reference Number must be exactly 13 digits and contain only numbers.');
     }
   }
 }
@@ -46,12 +61,12 @@ export class PaymentProcessingContext {
     return this.strategy.method;
   }
 
-  validate(amount: number): void {
+  validate(payload: PaymentValidationPayload): void {
     if (!this.strategy) {
       throw new Error('Invalid payment method');
     }
 
-    this.strategy.validate(amount);
+    this.strategy.validate(payload);
   }
 }
 
