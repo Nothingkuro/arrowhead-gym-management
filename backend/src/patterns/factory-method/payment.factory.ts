@@ -1,4 +1,5 @@
 import { PaymentMethod, Prisma } from '@prisma/client';
+import { IFactory } from './factory.interface';
 
 export type PaymentFactoryInput = {
   memberId: string;
@@ -11,7 +12,9 @@ export type PaymentFactoryInput = {
 /**
  * Factory Method for creating Payment create payloads.
  */
-export class PaymentFactory {
+export class PaymentFactory
+  implements IFactory<PaymentFactoryInput, Prisma.PaymentUncheckedCreateInput>
+{
   create(input: PaymentFactoryInput): Prisma.PaymentUncheckedCreateInput {
     return {
       memberId: input.memberId,

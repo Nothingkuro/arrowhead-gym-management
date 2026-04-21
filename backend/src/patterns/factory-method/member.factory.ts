@@ -1,4 +1,5 @@
 import { MemberStatus, Prisma } from '@prisma/client';
+import { IFactory } from './factory.interface';
 
 export type MemberFactoryInput = {
   fullName: string;
@@ -9,7 +10,9 @@ export type MemberFactoryInput = {
 /**
  * Factory Method for creating Member create payloads.
  */
-export class MemberFactory {
+export class MemberFactory
+  implements IFactory<MemberFactoryInput, Prisma.MemberCreateInput>
+{
   create(input: MemberFactoryInput): Prisma.MemberCreateInput {
     const [firstName, ...lastNameParts] = input.fullName.split(' ');
 
