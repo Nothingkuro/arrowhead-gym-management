@@ -6,7 +6,7 @@
 
 ## Overview
 
-**Arrowhead Gym Management System** is a web-based platform designed to digitize the daily operations of Arrowhead Gym. The system replaces a historically paper-based workflow — spanning member enrollment, payment collection, equipment inventory, and supplier procurement — with a centralized, role-aware digital interface accessible to gym staff and administrators.
+**Arrowhead Gym Management System** is a web-based platform designed to digitize the daily operations of a small gym. The system replaces a historically paper-based workflow — spanning member enrollment, payment collection, equipment inventory, and supplier procurement — with a centralized, role-aware digital interface accessible to gym staff and administrators.
 
 The platform enforces a two-role access model: **Staff** carry out day-to-day tasks such as member check-ins and payment recording, while **Admin (Owner)** additionally access financial reports, manage membership plans, and oversee user accounts. All data is persisted in a cloud-hosted PostgreSQL database with point-in-time recovery, ensuring operational continuity.
 
