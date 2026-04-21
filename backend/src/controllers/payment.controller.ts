@@ -42,7 +42,13 @@ export const getPlans = async (req: Request, res: Response) => {
  */
 export const createPayment = async (req: Request, res: Response) => {
   try {
-    const { memberId, planId, paymentMethod, amountPaid } = req.body;
+    const {
+      memberId,
+      planId,
+      paymentMethod,
+      amountPaid,
+      referenceNumber,
+    } = req.body;
     const processedById = req.authUser?.id;
 
     if (!memberId || !planId || !paymentMethod) {
@@ -62,14 +68,10 @@ export const createPayment = async (req: Request, res: Response) => {
     const parsedAmountPaid =
       amountPaid === undefined || amountPaid === null ? null : Number(amountPaid);
 
-    if (parsedAmountPaid !== null) {
-      try {
-        paymentContext.validate(parsedAmountPaid);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Amount paid must be a positive number';
-        return res.status(400).json({ error: message });
-      }
-    }
+    const normalizedReferenceNumber =
+      typeof referenceNumber === 'string' && referenceNumber.trim().length > 0
+        ? referenceNumber.trim()
+        : undefined;
 
     const [plan, member, user] = await Promise.all([
       prisma.membershipPlan.findUnique({ where: { id: planId } }),
@@ -94,6 +96,16 @@ export const createPayment = async (req: Request, res: Response) => {
 
     const finalAmount = parsedAmountPaid ?? Number(plan.price);
 
+    try {
+      paymentContext.validate({
+        amount: finalAmount,
+        referenceNumber: normalizedReferenceNumber,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid payment details';
+      return res.status(400).json({ error: message });
+    }
+
     const processPaymentCommand = new ProcessPaymentCommand({
       memberId,
       planId,
@@ -101,6 +113,7 @@ export const createPayment = async (req: Request, res: Response) => {
       planDurationDays: plan.durationDays,
       amount: finalAmount,
       paymentMethod: paymentContext.getMethod(),
+      referenceNumber: normalizedReferenceNumber,
     });
 
     const result = await processPaymentCommand.execute();
@@ -122,6 +135,7 @@ export const createPayment = async (req: Request, res: Response) => {
         planId: result.payment.planId,
         amount: Number(result.payment.amount),
         paymentMethod: result.payment.paymentMethod,
+        referenceNumber: result.payment.referenceNumber,
         transactionDate: result.payment.transactionDate.toISOString(),
         processedById: result.payment.processedById,
       },
