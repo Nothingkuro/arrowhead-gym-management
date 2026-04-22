@@ -1,13 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
+  AnalyticsCharts,
   DailyRevenueSummaryCard,
   LowInventoryAlertList,
   MembershipExpiryAlertList,
   MonthlyRevenueReportCard,
+  RiskAlertList,
 } from '../components/reports';
-import { getReportsOverview } from '../services/reportsApi';
-import type { MonthlyRevenueRecord, ReportData } from '../types/report';
+import {
+  getAtRiskMembers,
+  getPeakUtilization,
+  getReportsOverview,
+  getRevenueForecast,
+} from '../services/reportsApi';
+import type {
+  AtRiskMembersResponse,
+  ForecastMode,
+  MonthlyRevenueRecord,
+  PeakUtilization,
+  ReportData,
+  RevenueForecast,
+} from '../types/report';
 
 const DEFAULT_INVENTORY_THRESHOLD = 5;
 
@@ -41,7 +55,14 @@ function getLatestRecord(records: MonthlyRevenueRecord[]): MonthlyRevenueRecord 
  */
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [atRiskData, setAtRiskData] = useState<AtRiskMembersResponse | null>(null);
+  const [forecastMode, setForecastMode] = useState<ForecastMode>('CONSERVATIVE');
+  const [revenueForecast, setRevenueForecast] = useState<RevenueForecast | null>(null);
+  const [peakUtilization, setPeakUtilization] = useState<PeakUtilization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRiskLoading, setIsRiskLoading] = useState(true);
+  const [isForecastLoading, setIsForecastLoading] = useState(true);
+  const [isUtilizationLoading, setIsUtilizationLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inventoryThreshold, setInventoryThreshold] = useState(DEFAULT_INVENTORY_THRESHOLD);
   const isInitialLoading = isLoading && !reportData && !loadError;
@@ -61,19 +82,44 @@ export default function ReportsPage() {
    * Handles load reports for route-level dashboard orchestration.
    *
    * @param threshold Input consumed by load reports.
+   * @param mode Input consumed by load reports.
    * @returns A promise that resolves when processing completes.
    */
-  const loadReports = async (threshold: number) => {
+  const loadReports = async (threshold: number, mode: ForecastMode = forecastMode) => {
     setIsLoading(true);
+    setIsRiskLoading(true);
+    setIsForecastLoading(true);
+    setIsUtilizationLoading(true);
     setLoadError(null);
 
-    const data = await getReportsOverview({ threshold, days: 3 });
-    setReportData(data);
+    try {
+      const [overviewData, riskData, forecastData, utilizationData] = await Promise.all([
+        getReportsOverview({ threshold, days: 3 }),
+        getAtRiskMembers(),
+        getRevenueForecast(mode),
+        getPeakUtilization(),
+      ]);
 
-    const latestRecord = getLatestRecord(data.monthlyRevenue);
-    if (latestRecord) {
-      setSelectedMonth(latestRecord.month);
-      setSelectedYear(latestRecord.year);
+      setReportData({
+        ...overviewData,
+        atRiskMembers: riskData.items,
+        revenueForecast: forecastData,
+        peakUtilization: utilizationData,
+      });
+      setAtRiskData(riskData);
+      setRevenueForecast(forecastData);
+      setPeakUtilization(utilizationData);
+
+      const latestRecord = getLatestRecord(overviewData.monthlyRevenue);
+      if (latestRecord) {
+        setSelectedMonth(latestRecord.month);
+        setSelectedYear(latestRecord.year);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRiskLoading(false);
+      setIsForecastLoading(false);
+      setIsUtilizationLoading(false);
     }
   };
 
@@ -98,10 +144,6 @@ export default function ReportsPage() {
 
         const message = error instanceof Error ? error.message : 'Failed to load reports';
         setLoadError(message);
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
       }
     };
 
@@ -118,12 +160,43 @@ export default function ReportsPage() {
    */
   const handleRefresh = async () => {
     try {
-      await loadReports(inventoryThreshold);
+      await loadReports(inventoryThreshold, forecastMode);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to load reports';
       setLoadError(message);
+    }
+  };
+
+  /**
+   * Handles handle forecast mode change for route-level dashboard orchestration.
+   *
+   * @param mode Input consumed by handle forecast mode change.
+   * @returns A promise that resolves when processing completes.
+   */
+  const handleForecastModeChange = async (mode: ForecastMode) => {
+    setForecastMode(mode);
+    setIsForecastLoading(true);
+    setLoadError(null);
+
+    try {
+      const forecastData = await getRevenueForecast(mode);
+      setRevenueForecast(forecastData);
+
+      setReportData((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          revenueForecast: forecastData,
+        };
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to load forecast';
+      setLoadError(message);
     } finally {
-      setIsLoading(false);
+      setIsForecastLoading(false);
     }
   };
 
@@ -173,6 +246,25 @@ export default function ReportsPage() {
                 onThresholdChange={setInventoryThreshold}
                 onRefresh={handleRefresh}
                 isRefreshing={isLoading}
+              />
+            </section>
+
+            <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <RiskAlertList
+                members={atRiskData?.items ?? []}
+                updatedAt={atRiskData?.updatedAt}
+                isLoading={isRiskLoading}
+              />
+              <AnalyticsCharts
+                monthlyRevenue={reportData.monthlyRevenue}
+                revenueForecast={revenueForecast}
+                peakUtilization={peakUtilization}
+                forecastMode={forecastMode}
+                onForecastModeChange={(mode) => {
+                  void handleForecastModeChange(mode);
+                }}
+                isForecastLoading={isForecastLoading}
+                isUtilizationLoading={isUtilizationLoading}
               />
             </section>
           </>

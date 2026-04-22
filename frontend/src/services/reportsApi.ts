@@ -1,10 +1,14 @@
 import { API_BASE_URL } from './apiBaseUrl';
 import { getAuthHeaders } from './authHeaders';
 import type {
+  AtRiskMembersResponse,
+  ForecastMode,
   InventoryAlert,
   MembershipExpiryAlert,
   MonthlyRevenueRecord,
+  PeakUtilization,
   ReportData,
+  RevenueForecast,
   RevenueBreakdown,
 } from '../types/report';
 
@@ -17,6 +21,9 @@ type ReportsOverviewResponse = {
   membershipExpiryAlerts: MembershipExpiryAlert[];
   inventoryAlerts: InventoryAlert[];
 };
+
+type RevenueForecastResponse = RevenueForecast;
+type PeakUtilizationResponse = PeakUtilization[];
 
 /**
  * Handles make request logic for API integration behavior.
@@ -100,4 +107,36 @@ export async function getReportsOverview(params?: {
 export async function getUpcomingExpirations(days = 3): Promise<MembershipExpiryAlert[]> {
   const search = new URLSearchParams({ days: String(days) });
   return makeRequest<MembershipExpiryAlert[]>(`/reports/upcoming-expirations?${search.toString()}`);
+}
+
+/**
+ * Handles get at-risk members logic for API integration behavior.
+ *
+ * @returns A promise that resolves when processing is complete.
+ * @throws {Error} When the backend request fails or returns invalid data.
+ */
+export async function getAtRiskMembers(): Promise<AtRiskMembersResponse> {
+  return makeRequest<AtRiskMembersResponse>('/reports/at-risk-members');
+}
+
+/**
+ * Handles get revenue forecast logic for API integration behavior.
+ *
+ * @param mode Input used by get revenue forecast.
+ * @returns A promise that resolves when processing is complete.
+ * @throws {Error} When the backend request fails or returns invalid data.
+ */
+export async function getRevenueForecast(mode: ForecastMode = 'CONSERVATIVE'): Promise<RevenueForecastResponse> {
+  const search = new URLSearchParams({ mode });
+  return makeRequest<RevenueForecastResponse>(`/reports/revenue-forecast?${search.toString()}`);
+}
+
+/**
+ * Handles get peak utilization logic for API integration behavior.
+ *
+ * @returns A promise that resolves when processing is complete.
+ * @throws {Error} When the backend request fails or returns invalid data.
+ */
+export async function getPeakUtilization(): Promise<PeakUtilizationResponse> {
+  return makeRequest<PeakUtilizationResponse>('/reports/peak-utilization');
 }
