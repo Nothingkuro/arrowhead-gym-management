@@ -22,22 +22,6 @@ export const storyDailyRevenue: RevenueBreakdown = {
   date: new Date().toISOString(),
 };
 
-export const storyRevenueTrends = [
-  { day: 'Monday' as const, revenue: 11800 },
-  { day: 'Tuesday' as const, revenue: 12350 },
-  { day: 'Wednesday' as const, revenue: 11940 },
-  { day: 'Thursday' as const, revenue: 12880 },
-  { day: 'Friday' as const, revenue: 13610 },
-  { day: 'Saturday' as const, revenue: 14950 },
-  { day: 'Sunday' as const, revenue: 13120 },
-];
-
-export const storyMembershipDistribution = [
-  { plan: 'Daily Pass' as const, memberCount: 24, percentage: 22.2 },
-  { plan: 'Monthly Basic' as const, memberCount: 52, percentage: 48.1 },
-  { plan: 'Quarterly Plus' as const, memberCount: 32, percentage: 29.6 },
-];
-
 export const storyMonthlyRevenue: MonthlyRevenueRecord[] = [
   { month: 10, year: currentYear - 1, total: 149220 },
   { month: 11, year: currentYear - 1, total: 153440 },
@@ -263,8 +247,6 @@ export const storyInventoryAlertsHealthy: InventoryAlert[] = [
 
 export const storyReportData: ReportData = {
   dailyRevenue: storyDailyRevenue,
-  revenueTrends: storyRevenueTrends,
-  membershipDistribution: storyMembershipDistribution,
   monthlyRevenue: storyMonthlyRevenue,
   membershipExpiryAlerts: storyMembershipExpiryAlerts,
   inventoryAlerts: storyInventoryAlerts,
