@@ -310,7 +310,7 @@ export class AnalyticsService {
   async getPeakUtilizationByPlan(): Promise<PeakUtilizationDTO[]> {
     const rows = await prisma.$queryRaw<PeakUtilizationRow[]>(Prisma.sql`
       SELECT
-        CAST(DATE_PART('hour', a."checkInTime") AS INTEGER) AS "hour",
+        CAST(DATE_PART('hour', a."checkInTime" AT TIME ZONE 'Asia/Manila') AS INTEGER) AS "hour",
         COALESCE(mp.name, 'Unassigned') AS "planName",
         CAST(COUNT(*) AS INTEGER) AS "count"
       FROM "attendances" a

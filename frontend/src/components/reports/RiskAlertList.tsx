@@ -20,7 +20,7 @@ function formatDate(iso: string | null): string {
     return 'No recent check-in';
   }
 
-  return parsed.toLocaleDateString('en-US', {
+  return parsed.toLocaleDateString('en-PH', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

@@ -39,7 +39,7 @@ type ForecastChartPoint = {
 const CHART_COLORS = ['#BE0000', '#F97316', '#22C55E', '#0EA5E9', '#A855F7', '#EAB308'];
 
 function getMonthLabel(month: number): string {
-  return new Date(2000, month - 1, 1).toLocaleString('en-US', { month: 'short' });
+  return new Date(2000, month - 1, 1).toLocaleString('en-PH', { month: 'short' });
 }
 
 function buildForecastChartData(
