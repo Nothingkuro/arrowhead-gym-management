@@ -44,11 +44,6 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
       role: payload.role,
     };
 
-    req.requestContext = {
-      ...req.requestContext,
-      actorUserId: payload.sub,
-    };
-
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired session' });

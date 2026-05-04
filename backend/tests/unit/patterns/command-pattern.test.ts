@@ -26,9 +26,6 @@ describe('command patterns', () => {
       findUnique: jest.fn(),
       delete: jest.fn(),
     },
-    auditLog: {
-      createMany: jest.fn(),
-    },
   } as any;
 
   beforeEach(() => {
@@ -127,7 +124,6 @@ describe('command patterns', () => {
         id: 'member-1',
         status: MemberStatus.ACTIVE,
       });
-      mockPrismaClient.auditLog.createMany.mockResolvedValue({ count: 2 });
 
       const result = await command.execute();
 
@@ -151,14 +147,7 @@ describe('command patterns', () => {
         previousExpiryDate: null,
       });
 
-      mockPrismaClient.$queryRaw.mockResolvedValue([
-        {
-          id: 'member-1',
-          status: MemberStatus.ACTIVE,
-          expiryDate: new Date('2026-04-03T00:00:00.000Z'),
-        },
-      ]);
-      mockPrismaClient.auditLog.createMany.mockResolvedValue({ count: 2 });
+      mockPrismaClient.$queryRaw.mockResolvedValue([{ id: 'member-1' }]);
 
       await command.undo();
 

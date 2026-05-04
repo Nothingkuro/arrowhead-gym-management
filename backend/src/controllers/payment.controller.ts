@@ -115,12 +115,6 @@ export const createPayment = async (req: Request, res: Response) => {
       amount: finalAmount,
       paymentMethod: paymentContext.getMethod(),
       referenceNumber: normalizedReferenceNumber,
-      requestContext: {
-        requestId: req.requestContext?.requestId,
-        ipAddress: req.requestContext?.ipAddress,
-        userAgent: req.requestContext?.userAgent,
-        actorUserId: processedById,
-      },
     });
 
     const result = await processPaymentCommand.execute();
@@ -185,19 +179,11 @@ export const undoPayment = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Payment id is required' });
     }
 
-    const processPaymentCommand = new ProcessPaymentCommand({
-      paymentId,
-      requestContext: {
-        requestId: req.requestContext?.requestId,
-        ipAddress: req.requestContext?.ipAddress,
-        userAgent: req.requestContext?.userAgent,
-        actorUserId: req.authUser?.id,
-      },
-    });
-    const undoResult = await processPaymentCommand.undo();
+    const processPaymentCommand = new ProcessPaymentCommand({ paymentId });
+    await processPaymentCommand.undo();
 
     await notifyMemberChanged({
-      memberId: undoResult.memberId,
+      memberId: paymentId,
       action: 'UPDATED',
       happenedAt: new Date().toISOString(),
     });

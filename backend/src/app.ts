@@ -13,7 +13,6 @@ import profileRoutes from './routes/profile.routes';
 import healthRoutes from './routes/health.routes';
 import notificationRoutes from './routes/notification.routes';
 import { bootstrapObserverPattern } from './patterns/observer-pattern/observer.bootstrap';
-import { attachRequestContext } from './middleware/request-context.middleware';
 
 const app = express();
 
@@ -87,7 +86,6 @@ app.use(
 	})
 );
 app.use(cookieParser());
-app.use(attachRequestContext);
 app.use(express.json());
 
 // Public health check (No auth middleware!)

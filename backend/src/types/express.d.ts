@@ -1,5 +1,4 @@
 import type { AuthUser } from './auth';
-import type { RequestContext } from './request-context';
 
 declare global {
   namespace Express {
@@ -8,7 +7,6 @@ declare global {
      */
     interface Request {
       authUser?: AuthUser;
-      requestContext?: RequestContext;
     }
   }
 }
