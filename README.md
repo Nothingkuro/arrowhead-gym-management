@@ -6,22 +6,56 @@
 
 ## Overview
 
-**Arrowhead Gym Management System** is a web-based platform designed to digitize the daily operations of a small gym. The system replaces a historically paper-based workflow — spanning member enrollment, payment collection, equipment inventory, and supplier procurement — with a centralized, role-aware digital interface accessible to gym staff and administrators.
+**Arrowhead Gym Management System** is a web-based platform that digitizes the daily operations of a small gym previously reliant on paper-based record-keeping. The system provides a centralized, role-aware digital interface for membership management, payment processing, attendance tracking, equipment inventory, and supplier procurement — replacing manual workflows that were prone to data loss, human error, and slow reporting.
 
-The platform enforces a two-role access model: **Staff** carry out day-to-day tasks such as member check-ins and payment recording, while **Admin (Owner)** additionally access financial reports, manage membership plans, and oversee user accounts. All data is persisted in a cloud-hosted PostgreSQL database with point-in-time recovery, ensuring operational continuity.
+The platform enforces a **two-role access model** with clearly defined boundaries:
+
+| Role | Scope | Key Capabilities |
+|---|---|---|
+| **Staff (Employee/Cashier)** | Day-to-day operational data entry | Register members, log payments, record check-ins, update equipment condition. Cannot access financial reports or delete financial records. |
+| **Admin (Owner)** | Full system oversight, configuration, and analytics | All Staff capabilities plus: view financial and analytics reports, manage membership plans, configure inventory thresholds, manage staff/admin credentials (FR-8.1), and access supplier transaction logging. |
+
+> **Rationale — Two-user constraint:** Per SRS §7.2, the system maintains exactly two user records (one ADMIN, one STAFF). The Owner manages both sets of credentials through the Profiles page.
+
+All data is persisted in a cloud-hosted PostgreSQL database (NeonDB) with Point-in-Time Recovery, ensuring operational continuity and a maximum 6-hour data loss window.
 
 ---
 
 ## Key Features
 
-- **Member Registry** — Register, search, filter, and manage gym members with real-time status tracking (`ACTIVE`, `EXPIRED`, `INACTIVE`).
-- **Payment Processing** — Record membership payments linked to configurable plans; atomically renews member expiry on each transaction.
-- **Attendance Tracking** — Log member check-ins with timestamps; view full attendance history per member.
-- **Equipment Inventory** — Track gym equipment stock and condition (`GOOD`, `MAINTENANCE`, `BROKEN`) with low-inventory alerting.
-- **Supplier Management** — Maintain a supplier directory and log itemized procurement transactions.
-- **Operational Reports** — Admin dashboard with daily/monthly revenue, membership expiration forecasts, and inventory alerts.
-- **Membership Plan Configuration** — Admin-managed plan catalogue controlling name, price, and duration.
-- **Profile Management** — Staff and admin can update their own credentials securely.
+- **Member Registry** — Register, search, filter, and manage gym members with real-time status tracking (`ACTIVE`, `EXPIRED`, `INACTIVE`). Search returns results in under 500ms (NFR-1.2).
+- **Payment Processing** — Record membership payments linked to configurable plans; atomically renews member expiry on each transaction (NFR-2.1). Supports a 5-second undo grace period (US-2.3).
+- **Attendance Tracking** — Log member check-ins with timestamps; enforce active-status validation (FR-7.2). Check-ins are undoable within a 5-second window.
+- **Equipment Inventory** — Track gym equipment stock and condition (`GOOD`, `NEEDS_REPAIR`, `OUT_OF_ORDER`) with configurable low-inventory threshold alerts (FR-5.7, default: 5 units).
+- **Supplier Management** — Maintain a supplier directory and log itemized procurement transactions (FR-4).
+- **Advanced Analytics (Admin)** — Predictive member retention analysis flags "At-Risk" members (expiry ≤ 14 days AND no check-in in 10 days, FR-5.3). Multi-strategy revenue forecasting provides Conservative and Optimistic projections (FR-5.4). Peak-hour utilization charts visualize traffic density by hour and membership plan type (FR-5.5).
+- **Operational Reports (Admin)** — Real-time daily revenue summary by payment method (FR-5.1), short-term membership expiry monitoring within 3 days (FR-5.2), and historical monthly revenue reporting (FR-5.6).
+- **Membership Plan Configuration (Admin)** — Plan catalogue controlling name, fixed price, and duration in days (FR-6).
+- **Profile Management (Admin)** — Owner manages both admin and staff credentials through a dedicated Profiles page (FR-8.1).
+
+---
+
+## Architecture Overview
+
+The system follows a layered client–server architecture with a clear separation of concerns:
+
+| Layer | Role |
+|---|---|
+| **Frontend (React SPA)** | Responsive dashboard with mobile-first design (≥ 375px). Handles session management and inactivity timeout. |
+| **Backend (Express API)** | Centralized business logic, RBAC enforcement, and data consistency through Prisma transactions. |
+| **Database (NeonDB PostgreSQL)** | Cloud-hosted with SSL/TLS, connection pooling, and PITR-enabled backups. |
+
+### Design Patterns
+
+The backend employs several GoF design patterns to satisfy the Maintainability NFR (NFR-4):
+
+| Pattern | Application |
+|---|---|
+| **Command** | Encapsulates payment processing and check-in operations as reversible, transactional commands (`execute`/`undo`). Enables the 5-second undo grace period. |
+| **Strategy** | Payment method validation (Cash vs. GCash) and multi-mode revenue forecasting (Conservative vs. Optimistic) are implemented as interchangeable strategy families. |
+| **Observer** | Server-Sent Events (SSE) push real-time notification signals to connected clients when member, payment, or attendance state changes. |
+| **Factory Method** | Standardizes creation of Payment records and typed Report DTOs across multiple report categories. |
+| **Singleton** | Prisma client and ConfigManager are instantiated once and shared across the application lifecycle. |
 
 ---
 
@@ -35,6 +69,8 @@ The platform enforces a two-role access model: **Staff** carry out day-to-day ta
 | **Database** | PostgreSQL via NeonDB (serverless, PITR-enabled) |
 | **Testing** | Jest (unit/integration), Playwright (E2E), Storybook (component isolation) |
 | **CI/CD** | GitHub Actions (3-job pipeline: unit → integration → E2E) |
+
+> **Rationale — Why NeonDB?** Neon's native PITR ("History") feature provides a 6-hour recovery window on the free tier without additional infrastructure cost, satisfying NFR-4.2.
 
 ---
 
@@ -68,10 +104,6 @@ npm --prefix backend run db:seed
 ```bash
 npm run dev
 ```
-
-### 4. Run the application
-
-- [ ] Start backend and frontend together:
 
 Frontend: `http://localhost:5173` · Backend: `http://localhost:5001`
 

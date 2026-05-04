@@ -26,6 +26,55 @@ Copy `.env.example` to `.env` and provide the following value.
 
 ---
 
+## Mobile-First Design
+
+The interface is designed mobile-first, ensuring full usability on screens down to **375px** width (NFR-1.3). This prioritizes the Staff role's primary use case: operating at the gym counter on a tablet or smartphone during peak hours.
+
+Key responsive behaviors:
+
+- **Sidebar Navigation** — Collapses into a hamburger menu on viewports under 768px (US-8.2).
+- **Data Tables** — Switch to card-based layouts on narrow screens to maintain readability.
+- **Action Controls** — Touch-optimized tap targets and spacing for gym floor operations.
+
+---
+
+## State Management & Session Handling
+
+User sessions and inactivity detection are managed globally through the `InactivityTimeout` component, which wraps all authenticated routes via `MainLayout`:
+
+1. **Activity Tracking:** The component intercepts DOM events (`mousemove`, `mousedown`, `keydown`, `touchstart`, `scroll`) and successful `fetch` calls to record the last activity timestamp.
+2. **Token Refresh:** Every 60 seconds, if the user has been active within the last interval, the component calls `POST /api/auth/refresh` to extend the JWT session.
+3. **Auto-Logout:** After **5 minutes** of continuous inactivity (US-9.2), the component automatically calls `POST /api/auth/logout` and redirects to the login page.
+4. **Role State:** The authenticated user's role is stored in `sessionStorage` on login and used to conditionally render Admin-only sidebar links (Reports, Membership Plans, Profiles) and guard route access via `ProtectedRoute`.
+
+> **Rationale:** This client-side timeout mechanism complements the server-side JWT expiry, ensuring unattended workstations are secured even if the server token has not yet expired.
+
+---
+
+## Testing Strategy — Storybook
+
+[Storybook](https://storybook.js.org/) is used to isolate and visually verify UI components and full pages before integration into the live application. Stories are organized by domain under `src/stories/`:
+
+| Story Category | Coverage |
+|---|---|
+| `pages/` | Full-page compositions (Members, Payments, Reports, Equipment, Suppliers, Profiles, Login, Membership Plans) with `play` functions exercising user flows. |
+| `reports/` | Individual report widgets (Daily Revenue, Monthly Revenue, At-Risk Members, Expiry Alerts, Low Inventory Alerts, Analytics Charts). |
+| `payments/` | Payment form elements (Member Search, Plan Table, Payment Method Dropdown, Submit Button). |
+| `suppliers/` | Supplier Table and Transaction List components. |
+| `modals/` | CRUD modals (Edit Member, Edit Equipment, Supplier Form, Delete Confirmation, Transaction Form, Add Equipment). |
+| `common/` | Shared primitives (search controls, filter dropdowns). |
+| `membership-plans/` | Plan management grid and form components. |
+
+Stories include interaction tests (via `@storybook/test`) that simulate real user flows — typing into forms, selecting dropdowns, and asserting rendered output. This provides a rapid feedback loop for component-level regressions without requiring a running backend.
+
+**Run Storybook:**
+
+```bash
+npm run storybook
+```
+
+---
+
 ## Available Scripts
 
 | Command | Description |
